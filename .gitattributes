@@ -1,0 +1,5 @@
+# Normalize line endings: LF in the repo, tools convert on checkout as needed.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gguf binary
