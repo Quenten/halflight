@@ -23,3 +23,7 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
+
+# Obsidian: keep shared settings, drop per-machine workspace/cache
+vault/.obsidian/workspace*.json
+vault/.obsidian/cache
