@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from logging.config import fileConfig
 
+import halflight.models  # noqa: F401  # registers tables on SQLModel.metadata
 from alembic import context
 from halflight.config import get_settings
 from sqlalchemy import engine_from_config, pool
+from sqlmodel import SQLModel
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
@@ -14,8 +16,7 @@ config.set_main_option("sqlalchemy.url", get_settings().database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# No SQLModel metadata wired yet — tables arrive in M1. Autogenerate is off for now.
-target_metadata = None
+target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:

@@ -35,12 +35,28 @@ Health check:
 curl http://localhost:8000/healthz    # -> {"status":"ok"}
 ```
 
+## Vault ingestion
+
+Lint the vault, then ingest it into Postgres (upserts typed rows, chunks bodies,
+embeds non-secret chunks via the bge-m3 server, skips unchanged notes by hash):
+
+```powershell
+uv run python -m halflight.ingest.linter vault   # lint only (gate)
+uv run python -m halflight.ingest vault           # full ingest (needs embed server)
+```
+
+Ingestion aborts without touching the DB if the vault has lint errors. It needs
+the bge-m3 embedding server running (see below); the linter does not.
+
 ## Tests
 
 ```powershell
-uv run pytest          # all tests
-uv run pytest -k engine
+uv run pytest          # all tests (DB tests auto-skip if Postgres is down)
+uv run pytest -k lint
 ```
+
+DB integration tests run inside a rolled-back transaction, so they never write to
+the dev database.
 
 ## Lint / types
 
@@ -53,14 +69,18 @@ uv run mypy server
 
 Run on the host so the GPU is directly accessible on Windows.
 
+llama.cpp lives at `C:\Games\halflight\cudart-llama-bin-win-cuda-13.3-x64` (b9940,
+CUDA 13.3). Run each server in its own terminal from that folder:
+
 ```powershell
+$llama = "C:\Games\halflight\cudart-llama-bin-win-cuda-13.3-x64"
+
 # terminal 1 — chat model
-cd C:\llama.cpp
-.\llama-server.exe -m C:\models\Qwen_Qwen3.6-27B-Q4_K_M.gguf `
+& "$llama\llama-server.exe" -m C:\models\Qwen_Qwen3.6-27B-Q4_K_M.gguf `
   -ngl 99 --ctx-size 16384 --host 127.0.0.1 --port 8080 --prompt-cache-all
 
-# terminal 2 — embeddings (bge-m3)
-.\llama-server.exe -m C:\models\bge-m3-Q8_0.gguf `
+# terminal 2 — embeddings (bge-m3; download the GGUF first, ~600MB)
+& "$llama\llama-server.exe" -m C:\models\bge-m3-Q8_0.gguf `
   --embedding --host 127.0.0.1 --port 8081
 ```
 

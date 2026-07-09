@@ -11,8 +11,9 @@ venv/
 # Env / secrets
 .env
 
-# Models & large binaries (kept outside repo, live in C:\models)
-models/
+# Models & large binaries (kept outside repo, live in C:\models).
+# Anchored to repo root so it doesn't match the server/halflight/models package.
+/models/
 *.gguf
 
 # Runtime data
