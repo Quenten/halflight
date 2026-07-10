@@ -75,9 +75,11 @@ CUDA 13.3). Run each server in its own terminal from that folder:
 ```powershell
 $llama = "C:\Games\halflight\cudart-llama-bin-win-cuda-13.3-x64"
 
-# terminal 1 — chat model
+# terminal 1 — chat model (Qwen is a thinking model; narration disables thinking
+# per-request via chat_template_kwargs. --prompt-cache-all is NOT a valid flag in
+# this build; prompt caching is driven by cache_prompt:true in each request.)
 & "$llama\llama-server.exe" -m C:\models\Qwen_Qwen3.6-27B-Q4_K_M.gguf `
-  -ngl 99 --ctx-size 16384 --host 127.0.0.1 --port 8080 --prompt-cache-all
+  -ngl 99 --ctx-size 16384 --host 127.0.0.1 --port 8080
 
 # terminal 2 — embeddings (bge-m3; download the GGUF first, ~600MB)
 & "$llama\llama-server.exe" -m C:\models\bge-m3-Q8_0.gguf `

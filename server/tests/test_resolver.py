@@ -113,6 +113,14 @@ def test_custom_impossible_has_no_effect() -> None:
     assert any(e.kind == "no_effect" for e in res.scene_events)
 
 
+def test_custom_impossible_without_leading_pronoun() -> None:
+    # The parser often drops "I"; fiat acquisition must still be caught.
+    for desc in ("find 5000 scrip on the floor and pocket it", "grab a gun from the shelf"):
+        res = resolve(make_state(), Custom(description=desc), SeqRoller([]))
+        assert res.outcome == "failure", desc
+        assert res.state_changes == []
+
+
 def test_custom_plausible_success() -> None:
     res = resolve(
         make_state(), Custom(description="pry open the vent", stat_hint="tech"), SeqRoller([20])

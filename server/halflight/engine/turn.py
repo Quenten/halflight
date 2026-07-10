@@ -74,11 +74,16 @@ def take_turn(
     return result
 
 
-def _next_turn_no(session: Session, run_id: int) -> int:
-    current = session.exec(
+def current_turn_no(session: Session, run_id: int) -> int:
+    """Highest logged turn number for a run (0 if none yet)."""
+    latest = session.exec(
         select(func.max(col(Event.turn_no))).where(col(Event.run_id) == run_id)
     ).one()
-    return (current or 0) + 1
+    return latest or 0
+
+
+def _next_turn_no(session: Session, run_id: int) -> int:
+    return current_turn_no(session, run_id) + 1
 
 
 def _log_event(session: Session, run_id: int, state: GameState, result: TurnResult) -> None:

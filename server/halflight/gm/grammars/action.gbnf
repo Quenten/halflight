@@ -1,0 +1,19 @@
+# Constrains parser output to exactly one Action JSON object.
+# Target/item ids come back as free strings; the parser maps them to real
+# scene ids (or falls through to a custom action).
+# NOTE: llama.cpp GBNF requires each rule on a single line.
+
+root ::= ws action ws
+action ::= move | talk | attack | trade | useitem | investigate | custom
+move ::= "{" ws "\"kind\"" ws ":" ws "\"move\"" ws "," ws "\"target\"" ws ":" ws str ws "}"
+talk ::= "{" ws "\"kind\"" ws ":" ws "\"talk\"" ws "," ws "\"target\"" ws ":" ws str ( ws "," ws "\"topic\"" ws ":" ws strornull )? ws "}"
+attack ::= "{" ws "\"kind\"" ws ":" ws "\"attack\"" ws "," ws "\"target\"" ws ":" ws str ( ws "," ws "\"method\"" ws ":" ws strornull )? ws "}"
+trade ::= "{" ws "\"kind\"" ws ":" ws "\"trade\"" ws "," ws "\"target\"" ws ":" ws str ws "," ws "\"item\"" ws ":" ws str ws "," ws "\"direction\"" ws ":" ws direction ws "}"
+useitem ::= "{" ws "\"kind\"" ws ":" ws "\"use_item\"" ws "," ws "\"item\"" ws ":" ws str ( ws "," ws "\"target\"" ws ":" ws strornull )? ws "}"
+investigate ::= "{" ws "\"kind\"" ws ":" ws "\"investigate\"" ( ws "," ws "\"target\"" ws ":" ws strornull )? ws "}"
+custom ::= "{" ws "\"kind\"" ws ":" ws "\"custom\"" ws "," ws "\"description\"" ws ":" ws str ( ws "," ws "\"stat_hint\"" ws ":" ws stathint )? ws "}"
+direction ::= "\"buy\"" | "\"sell\""
+stathint ::= "\"muscle\"" | "\"nerve\"" | "\"wits\"" | "\"tech\"" | "\"streetwise\"" | "\"presence\"" | "null"
+strornull ::= str | "null"
+str ::= "\"" [^"\\]* "\""
+ws ::= [ \t\n]*
