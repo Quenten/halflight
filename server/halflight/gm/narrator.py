@@ -15,6 +15,8 @@ from halflight.engine.results import SceneEvent, TurnResult
 from halflight.gm.client import LLMClient
 from halflight.gm.prompts import gm_style, narration_examples, narrator_rules
 
+_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+
 _HIT_WORDS = re.compile(
     r"\b(sank|sinks?|sink|connected|landed|struck|slammed|buried|drove it|split|cleaved)\b",
     re.IGNORECASE,
@@ -26,6 +28,14 @@ _DEATH_WORDS = re.compile(
 _PLAYER_DEATH_WORDS = re.compile(
     r"\byou (die|died|are dead|black out for good|bleed out)\b", re.IGNORECASE
 )
+
+
+def strip_thinking(text: str) -> str:
+    """Remove Qwen <think> blocks defensively (enable_thinking=false should prevent them)."""
+    text = _THINK.sub("", text)
+    if "<think>" in text and "</think>" not in text:  # truncated/unclosed
+        text = text.split("<think>", 1)[0]
+    return text.strip()
 
 
 def system_prompt(vault_path: str) -> str:
@@ -109,11 +119,15 @@ def narrate(
         {"role": "system", "content": system},
         {"role": "user", "content": context},
     ]
-    text = "".join(client.chat_stream(messages, temperature=0.8, max_tokens=max_tokens)).strip()
+    text = strip_thinking(
+        "".join(client.chat_stream(messages, temperature=0.8, max_tokens=max_tokens))
+    )
     if not check_consistency(text, result):
         return text
 
-    retry = "".join(client.chat_stream(messages, temperature=0.2, max_tokens=max_tokens)).strip()
+    retry = strip_thinking(
+        "".join(client.chat_stream(messages, temperature=0.2, max_tokens=max_tokens))
+    )
     if not check_consistency(retry, result):
         return retry
 

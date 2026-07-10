@@ -59,6 +59,9 @@ class LlamaClient:
             "max_tokens": max_tokens,
             "stream": True,
             "cache_prompt": True,
+            # Qwen is a thinking model; disable reasoning so it doesn't consume the
+            # token budget before producing narration.
+            "chat_template_kwargs": {"enable_thinking": False},
         }
         with httpx.stream(
             "POST", f"{self.base_url}/v1/chat/completions", json=payload, timeout=self.timeout

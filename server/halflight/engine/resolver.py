@@ -27,10 +27,12 @@ DIFFICULTY = {"trivial": 5, "easy": 10, "medium": 15, "hard": 20, "very_hard": 2
 BASE_DEFENSE = 10
 UNARMED_DAMAGE = 3
 
-# Custom actions that try to conjure resources/facts by fiat — the world won't cooperate.
+# Custom actions that try to conjure resources/items by fiat — the world won't cooperate.
+# Matches an acquisition verb near a resource/valuable, regardless of a leading "I".
 _IMPOSSIBLE = re.compile(
-    r"\b(i\s+(find|found|have|now\s+have|get|gain|acquire|spawn|conjure)"
-    r"|appears?\s+out\s+of|materiali[sz]e)",
+    r"\b(find|found|discover|pocket|grab|take|get|have|gain|acquire|obtain|loot"
+    r"|spawn|conjure|materiali[sz]e)\b[^.]*?"
+    r"\b(\d{2,}|scrip|credits?|money|cash|gun|rifle|pistol|weapon|ammo|key|keycard)\b",
     re.IGNORECASE,
 )
 
