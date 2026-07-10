@@ -25,7 +25,7 @@ docker compose up -d
 # 4. Run migrations (enables the vector extension)
 uv run alembic upgrade head
 
-# 5. Run the server
+# 5. Run the server (add --host 0.0.0.0 to play from another device on the LAN)
 uv run uvicorn halflight.main:app --reload
 ```
 
@@ -34,6 +34,20 @@ Health check:
 ```powershell
 curl http://localhost:8000/healthz    # -> {"status":"ok"}
 ```
+
+## Play
+
+Open `http://localhost:8000/` in a browser. Requires a world in the DB and both
+model servers running (see below). Ingest a world first, then click **new game**
+with a valid start-location id.
+
+```powershell
+# ingest a playable world (the test fixture works; or your own vault once authored)
+uv run python -m halflight.ingest server/tests/fixtures/vault_mini
+```
+
+Endpoints: `POST /runs` (start), `GET /state?run_id=`, `POST /turn` (SSE narration),
+`POST /admin/ingest`. Every turn is logged to `logs/turns/{run_id}/{turn_no}.json`.
 
 ## Vault ingestion
 
