@@ -9,10 +9,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from sqlmodel import Session, select
-
 from halflight.ingest.runner import run_ingest
 from halflight.models import Faction, Item, LoreChunk, NoteIndex, Npc
+from sqlmodel import Session, select
 
 from .conftest import FakeEmbedder
 

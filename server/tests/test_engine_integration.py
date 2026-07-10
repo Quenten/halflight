@@ -8,13 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlmodel import Session, col, select
-
 from halflight.engine.actions import Attack, Move, Talk
 from halflight.engine.dice import Dice
 from halflight.engine.turn import start_run, take_turn
 from halflight.ingest.runner import run_ingest
 from halflight.models import Event, PlayerState, Run
+from sqlmodel import Session, col, select
 
 from .conftest import FakeEmbedder
 

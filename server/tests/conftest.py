@@ -11,10 +11,9 @@ import hashlib
 from collections.abc import Iterator
 
 import pytest
-from sqlmodel import Session
-
 from halflight.db import engine
 from halflight.models.authored import EMBED_DIM
+from sqlmodel import Session
 
 
 def _db_available() -> bool:
