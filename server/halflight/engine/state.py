@@ -35,6 +35,7 @@ def load_state(session: Session, run_id: int) -> GameState:
     loc = session.get(Location, ps.location_id)
     location = LocationView(
         id=ps.location_id,
+        name=loc.name if loc else ps.location_id,
         connections=list(loc.connections) if loc else [],
         danger=loc.danger if loc else 0,
     )
@@ -50,6 +51,7 @@ def load_state(session: Session, run_id: int) -> GameState:
         authored = session.get(Npc, ns.npc_id)
         npcs[ns.npc_id] = NpcView(
             id=ns.npc_id,
+            name=authored.name if authored else ns.npc_id,
             hp=ns.hp,
             stats=dict(authored.stats) if authored else {},
             location_id=ns.current_location,

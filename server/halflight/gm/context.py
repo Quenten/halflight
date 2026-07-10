@@ -30,30 +30,48 @@ def build_context(
     state: GameState, result: TurnResult, retrieved: list[RetrievedChunk]
 ) -> str:
     p = state.player
+    loc = state.location.name or state.location.id
     parts: list[str] = [
-        f"## Your state\nHP {p.hp} · Scrip {p.credits} · Location {state.location.id}",
+        f"## Your state\nHP {p.hp} · Scrip {p.credits} · Time {p.time_ticks}",
+        f"## Where you are\nThe scene takes place at: {loc}. The narration stays here.",
     ]
 
     if state.npcs:
         who = ", ".join(
-            f"{n.id} (hp {n.hp}, {'alive' if n.alive else 'dead'})" for n in state.npcs.values()
+            f"{n.name or n.id} ({'alive' if n.alive else 'dead'})" for n in state.npcs.values()
         )
-        parts.append(f"## People here\n{who}")
+        present = (
+            "## Who is physically present (the ONLY characters in the scene)\n" + who + "\n"
+            "No one else is here. Do NOT bring other named characters into the scene."
+        )
+    else:
+        present = (
+            "## Who is physically present\nNo one. You are alone here — do not introduce"
+            " any named character into the scene."
+        )
+    parts.append(present)
 
     if retrieved:
         lore = "\n\n".join(f"- {c.body}" for c in retrieved)
         parts.append(
-            "## Relevant lore (the ONLY source of world facts; do not invent beyond it)\n" + lore
+            "## Background lore you may know (NOT necessarily present or nearby)\n"
+            "Use only for what the character knows or recalls. It does not put any person or"
+            " place into the current scene. If it doesn't fit, ignore it. If the player asks about"
+            " something not covered here, the character does not know.\n\n" + lore
         )
     else:
         parts.append(
-            "## Relevant lore\n(nothing retrieved — the character does not know; say so if asked)"
+            "## Background lore\n(nothing retrieved — the character does not know; say so if asked)"
         )
 
     parts.append(
         "## What just happened (absolute truth; never contradict)\n" + describe_result(result)
     )
     parts.append(
-        "Narrate this turn. Second person, past tense, 100-250 words. Do not ask questions."
+        "Narrate this turn. Second person, past tense. Keep it TIGHT — 40 to 110 words, one or"
+        " two short paragraphs. Err short. Stay at the current location with only the people listed"
+        " as present. If the player asks who or what something is, answer briefly from the"
+        " background lore (what the character knows); if it isn't there, they don't know."
+        " Do not ask questions."
     )
     return "\n\n".join(parts)

@@ -37,8 +37,9 @@ def test_create_run_and_get_state(
     assert data["location_id"] == "loc_tram_hub"
     assert data["hp"] == 15
     assert data["ended"] is False
-    assert "loc_underlevel" in data["exits"]
-    assert any(n["id"] == "npc_dax" for n in data["npcs"])
+    assert data["location_name"] == "Tram Hub"
+    assert any(e["id"] == "loc_underlevel" for e in data["exits"])
+    assert any(n["id"] == "npc_dax" and n["name"] == "Dax" for n in data["npcs"])
 
     run_id = data["run_id"]
     state = client.get("/state", params={"run_id": run_id})

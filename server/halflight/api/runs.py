@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, SQLModel
 
 from halflight.api.deps import SessionDep
-from halflight.api.schemas import NpcBrief, StartRunRequest, StateResponse
+from halflight.api.schemas import ExitBrief, ItemBrief, NpcBrief, StartRunRequest, StateResponse
 from halflight.engine.state import load_state
 from halflight.engine.turn import start_run
-from halflight.models import Run
+from halflight.models import Item, Location, Npc, Run
 
 router = APIRouter()
+
+
+def _name(session: Session, model: type[SQLModel], id_: str) -> str:
+    name = getattr(session.get(model, id_), "name", None)
+    return name if isinstance(name, str) else id_
 
 
 def snapshot(session: Session, run_id: int) -> StateResponse:
@@ -19,21 +24,41 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
     if run is None:
         raise HTTPException(status_code=404, detail=f"no run {run_id}")
     state = load_state(session, run_id)
+
+    inventory = []
+    for item_id, qty in state.player.inventory.items():
+        item = session.get(Item, item_id)
+        inventory.append(
+            ItemBrief(
+                id=item_id,
+                name=item.name if item else item_id,
+                kind=item.kind if item else "misc",
+                quantity=qty,
+            )
+        )
+
     return StateResponse(
         run_id=run_id,
         character_name=run.character_name,
         hp=state.player.hp,
         credits=state.player.credits,
         location_id=state.location.id,
+        location_name=_name(session, Location, state.location.id),
         time_ticks=state.player.time_ticks,
         ended=run.ended_at is not None,
         cause_of_death=run.cause_of_death,
-        exits=state.location.connections,
+        stats=state.player.stats,
+        exits=[
+            ExitBrief(id=e, name=_name(session, Location, e))
+            for e in state.location.connections
+        ],
         npcs=[
-            NpcBrief(id=n.id, alive=n.alive, disposition=n.disposition)
+            NpcBrief(
+                id=n.id, name=_name(session, Npc, n.id), alive=n.alive, disposition=n.disposition
+            )
             for n in state.npcs.values()
         ],
-        inventory=state.player.inventory,
+        inventory=inventory,
     )
 
 

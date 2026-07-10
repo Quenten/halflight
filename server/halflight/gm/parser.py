@@ -8,14 +8,29 @@ through to a Custom action so a turn never dies on a parse error.
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 
-from halflight.engine.actions import Action, Custom, parse_action
+from halflight.engine.actions import Action, Custom, Investigate, Move, Talk, parse_action
 from halflight.engine.gamestate import GameState
 from halflight.gm.client import LLMClient
 
 _GRAMMAR_PATH = Path(__file__).parent / "grammars" / "action.gbnf"
+
+# Movement cues. A `move` the model picks without one of these is treated as a
+# spurious teleport and re-interpreted, keeping the player where they are.
+_TRAVEL = re.compile(
+    r"\b(go|going|goes|head|heading|move|moving|walk|walking|run|running|enter|"
+    r"leave|leaving|travel|descend|climb|sneak|creep|return|toward|towards|into|"
+    r"back to|down to|up to|over to|out to)\b",
+    re.IGNORECASE,
+)
+_TALK = re.compile(
+    r"\b(ask|asks|tell|tells|talk|talking|speak|say|says|question|greet|answer|"
+    r"reply|chat|whisper|demand|beg|threaten)\b",
+    re.IGNORECASE,
+)
 
 
 @lru_cache(maxsize=1)
@@ -24,15 +39,18 @@ def action_grammar() -> str:
 
 
 def render_scene(state: GameState) -> str:
-    """Compact scene description: the ids the parser is allowed to target."""
+    """Compact scene description: the ids the parser may target, with display names."""
     exits = ", ".join(state.location.connections) or "(none)"
     people = (
-        ", ".join(f"{n.id}" + ("" if n.alive else " [dead]") for n in state.npcs.values())
+        ", ".join(
+            f"{n.id} ({n.name or n.id})" + ("" if n.alive else " [dead]")
+            for n in state.npcs.values()
+        )
         or "(no one)"
     )
     inv = ", ".join(state.player.inventory) or "(empty)"
     return (
-        f"Location: {state.location.id}\n"
+        f"Location: {state.location.id} ({state.location.name or state.location.id})\n"
         f"Exits (move targets): {exits}\n"
         f"People here (talk/attack targets): {people}\n"
         f"Your inventory (use_item/sell): {inv}"
@@ -44,6 +62,13 @@ def build_prompt(system: str, state: GameState, text: str) -> str:
         f"{system}\n\n"
         f"## Scene\n{render_scene(state)}\n\n"
         f'## Player input\n"{text}"\n\n'
+        f"## Targeting rules\n"
+        f"- Use 'move' ONLY when the player explicitly travels to one of the Exits listed above"
+        f" (e.g. 'go to the market', 'head down'). Never relocate the player otherwise.\n"
+        f"- A question about a person or place ('who is X', 'what is Y', 'describe here') is"
+        f" 'investigate' — never 'move'.\n"
+        f"- 'talk' only targets someone in People here; if absent, use 'investigate'.\n"
+        f"- Targets must be ids from the Scene above.\n\n"
         f"## Output exactly one action as JSON:\n"
     )
 
@@ -53,6 +78,26 @@ def _coerce(raw: str) -> Action | None:
         return parse_action(json.loads(raw))
     except (json.JSONDecodeError, ValueError):
         return None
+
+
+def _present_npc(text: str, state: GameState) -> str | None:
+    low = text.lower()
+    for n in state.npcs.values():
+        short = n.id.split("_", 1)[-1]  # npc_dax -> dax
+        if short in low or n.id in low or (n.name and n.name.lower() in low):
+            return n.id
+    return None
+
+
+def _guard_move(action: Action, text: str, state: GameState) -> Action:
+    """Reject a `move` with no travel cue — the model over-picks it. Re-interpret
+    as talk (a present NPC is addressed) or investigate, so the player stays put."""
+    if isinstance(action, Move) and not _TRAVEL.search(text):
+        npc = _present_npc(text, state)
+        if npc is not None and _TALK.search(text):
+            return Talk(target=npc)
+        return Investigate()
+    return action
 
 
 def parse_intent(
@@ -69,5 +114,5 @@ def parse_intent(
         raw = client.complete(prompt, grammar=grammar, temperature=temperature)
         action = _coerce(raw)
         if action is not None:
-            return action
+            return _guard_move(action, text, state)
     return Custom(description=text)

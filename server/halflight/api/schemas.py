@@ -28,8 +28,21 @@ class TurnRequest(BaseModel):
 
 class NpcBrief(BaseModel):
     id: str
+    name: str
     alive: bool
     disposition: int
+
+
+class ExitBrief(BaseModel):
+    id: str
+    name: str
+
+
+class ItemBrief(BaseModel):
+    id: str
+    name: str
+    kind: str
+    quantity: int
 
 
 class StateResponse(BaseModel):
@@ -38,9 +51,11 @@ class StateResponse(BaseModel):
     hp: int
     credits: int
     location_id: str
+    location_name: str
     time_ticks: int
     ended: bool
     cause_of_death: str | None
-    exits: list[str]
+    stats: dict[str, int]
+    exits: list[ExitBrief]
     npcs: list[NpcBrief]
-    inventory: dict[str, int]
+    inventory: list[ItemBrief]

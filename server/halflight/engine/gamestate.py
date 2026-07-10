@@ -32,6 +32,7 @@ class NpcView:
     hp: int
     stats: dict[str, int]
     location_id: str
+    name: str = ""
     alive: bool = True
     disposition: int = 0
     faction_id: str | None = None
@@ -43,6 +44,7 @@ class NpcView:
 @dataclass
 class LocationView:
     id: str
+    name: str = ""
     connections: list[str] = field(default_factory=list)
     danger: int = 0
 

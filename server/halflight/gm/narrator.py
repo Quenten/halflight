@@ -112,7 +112,7 @@ def narrate(
     system: str,
     context: str,
     result: TurnResult,
-    max_tokens: int = 350,
+    max_tokens: int = 200,
 ) -> str:
     """Generate narration, validate it, regenerate once, else fall back to facts."""
     messages = [

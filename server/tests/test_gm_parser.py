@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from halflight.engine.actions import Attack, Custom, Move
+from halflight.engine.actions import Attack, Custom, Investigate, Move, Talk
 from halflight.engine.gamestate import GameState, LocationView, NpcView, PlayerView
 from halflight.gm.parser import parse_intent, render_scene
 
@@ -54,3 +54,22 @@ def test_falls_back_to_custom() -> None:
 def test_render_scene_lists_ids() -> None:
     scene = render_scene(make_state())
     assert "loc_b" in scene and "npc_dax" in scene and "itm_shiv" in scene
+
+
+def test_spurious_move_to_talk_is_guarded() -> None:
+    # Model over-picks move; "ask dax" has no travel cue -> talk to the present NPC.
+    client = FakeClient(['{"kind": "move", "target": "loc_b"}'])
+    action = parse_intent("ask dax about the docks", make_state(), client, system="SYS")
+    assert isinstance(action, Talk) and action.target == "npc_dax"
+
+
+def test_spurious_move_without_npc_becomes_investigate() -> None:
+    client = FakeClient(['{"kind": "move", "target": "loc_b"}'])
+    action = parse_intent("what is this place", make_state(), client, system="SYS")
+    assert isinstance(action, Investigate)
+
+
+def test_real_move_is_kept() -> None:
+    client = FakeClient(['{"kind": "move", "target": "loc_b"}'])
+    action = parse_intent("head over to loc_b", make_state(), client, system="SYS")
+    assert isinstance(action, Move) and action.target == "loc_b"

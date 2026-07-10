@@ -69,7 +69,7 @@ def turn(
             {"role": "user", "content": context},
         ]
         acc: list[str] = []
-        for token in chat.chat_stream(messages, temperature=0.8, max_tokens=350):
+        for token in chat.chat_stream(messages, temperature=0.8, max_tokens=200):
             acc.append(token)
             yield _sse("token", {"text": token})
 

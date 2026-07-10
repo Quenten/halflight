@@ -7,7 +7,8 @@
 <style>
   :root {
     --bg: #0b0d0e; --panel: #121517; --edge: #23282b;
-    --ink: #c8cdd0; --dim: #6f797e; --amber: #d8a657; --blood: #a4453b; --ok: #7a9e6e;
+    --ink: #c8cdd0; --dim: #6f797e; --amber: #d8a657; --blood: #a4453b;
+    --ok: #7a9e6e; --cyan: #6fb3b8;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -17,13 +18,44 @@
     display: flex; flex-direction: column; height: 100vh;
   }
   header {
-    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
     padding: .5rem .9rem; background: var(--panel); border-bottom: 1px solid var(--edge);
   }
   header .title { color: var(--amber); letter-spacing: .28em; font-weight: 700; }
   .stat { color: var(--dim); }
   .stat b { color: var(--ink); font-weight: 600; }
   #hp.low b { color: var(--blood); }
+  #loc { color: var(--cyan); }
+  .spacer { margin-left: auto; }
+  button {
+    background: transparent; border: 1px solid var(--edge); color: var(--amber);
+    font: inherit; padding: .4rem .8rem; border-radius: 3px; cursor: pointer;
+  }
+  button:hover { border-color: var(--amber); }
+  button:disabled { color: var(--dim); border-color: var(--edge); cursor: default; }
+  .setup { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .setup input { width: 9rem; }
+  input[type=text] {
+    background: #0e1113; border: 1px solid var(--edge); color: var(--ink);
+    font: inherit; padding: .45rem .6rem; border-radius: 3px; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--amber); }
+
+  /* Character sheet panel */
+  #sheet {
+    display: none; background: #0e1113; border-bottom: 1px solid var(--edge);
+    padding: .8rem 1.1rem; gap: 2rem; max-width: 820px; width: 100%; margin: 0 auto;
+    flex-wrap: wrap; max-height: 45vh; overflow-y: auto;
+  }
+  #sheet.open { display: flex; }
+  .sheet-col { flex: 1; min-width: 190px; }
+  .sheet-col h3 { color: var(--cyan); font-size: 12px; letter-spacing: .2em; margin: 0 0 .5rem; }
+  .row { display: flex; justify-content: space-between; gap: 1rem; padding: .1rem 0; }
+  .row .k { color: var(--dim); } .row .v { color: var(--ink); }
+  .row .v.neg { color: var(--blood); } .row .v.pos { color: var(--ok); }
+  .tag { color: var(--dim); font-size: 12px; }
+  .empty { color: var(--dim); font-style: italic; }
+
   main {
     flex: 1; overflow-y: auto; padding: 1rem 1.1rem; max-width: 820px; width: 100%;
     margin: 0 auto; white-space: pre-wrap; word-wrap: break-word;
@@ -32,24 +64,12 @@
   .you { color: var(--amber); }
   .you::before { content: "> "; color: var(--dim); }
   .narr { color: var(--ink); margin: .3rem 0 1rem; }
-  .correction { color: var(--blood); }
+  .correction { color: var(--blood); font-style: italic; }
   .dead { color: var(--blood); font-weight: 700; }
+  .thinking { color: var(--dim); font-style: italic; }
   footer { border-top: 1px solid var(--edge); background: var(--panel); padding: .5rem .9rem; }
   form { display: flex; gap: .6rem; max-width: 820px; margin: 0 auto; }
-  input[type=text] {
-    flex: 1; background: #0e1113; border: 1px solid var(--edge); color: var(--ink);
-    font: inherit; padding: .5rem .6rem; border-radius: 3px; outline: none;
-  }
-  input[type=text]:focus { border-color: var(--amber); }
-  button {
-    background: transparent; border: 1px solid var(--edge); color: var(--amber);
-    font: inherit; padding: .5rem .9rem; border-radius: 3px; cursor: pointer;
-  }
-  button:hover { border-color: var(--amber); }
-  button:disabled { color: var(--dim); border-color: var(--edge); cursor: default; }
-  .setup { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
-  .setup input { width: 10rem; }
-  a { color: var(--amber); }
+  form input[type=text] { flex: 1; }
 </style>
 </head>
 <body>
@@ -59,12 +79,30 @@
     <span class="stat" id="hp">HP <b>—</b></span>
     <span class="stat">SCRIP <b id="scrip">—</b></span>
     <span class="stat">T<b id="time">—</b></span>
-    <span class="setup" style="margin-left:auto">
+    <button id="sheetBtn" class="spacer">sheet</button>
+    <span class="setup">
       <input id="name" type="text" placeholder="name" value="Drifter" />
       <input id="start" type="text" placeholder="start location id" value="loc_saltgate" />
       <button id="new">new game</button>
     </span>
   </header>
+
+  <section id="sheet">
+    <div class="sheet-col">
+      <h3>STATUS</h3>
+      <div id="sheet-status"></div>
+      <h3 style="margin-top:1rem">STATS</h3>
+      <div id="sheet-stats"></div>
+    </div>
+    <div class="sheet-col">
+      <h3>HERE</h3>
+      <div id="sheet-here"></div>
+    </div>
+    <div class="sheet-col">
+      <h3>INVENTORY</h3>
+      <div id="sheet-inv"></div>
+    </div>
+  </section>
 
   <main id="log"></main>
 
@@ -81,6 +119,7 @@ const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 let runId = null;
 let busy = false;
+let lastState = null;
 
 function scroll() { log.scrollTop = log.scrollHeight; }
 function el(cls, text) {
@@ -89,14 +128,44 @@ function el(cls, text) {
   log.appendChild(d); scroll(); return d;
 }
 function sys(t) { el('sys', t); }
+function row(k, v, cls) {
+  return `<div class="row"><span class="k">${k}</span><span class="v ${cls||''}">${v}</span></div>`;
+}
 
 function renderState(s) {
-  document.getElementById('loc').textContent = s.location_id;
+  lastState = s;
+  document.getElementById('loc').textContent = s.location_name || s.location_id;
   const hp = document.getElementById('hp');
   hp.querySelector('b').textContent = s.hp;
   hp.classList.toggle('low', s.hp <= 5);
   document.getElementById('scrip').textContent = s.credits;
   document.getElementById('time').textContent = s.time_ticks;
+
+  document.getElementById('sheet-status').innerHTML =
+    row('HP', s.hp) + row('Credits', s.credits + ' cr') +
+    row('Location', s.location_name || s.location_id) + row('Turn', s.time_ticks);
+
+  const statOrder = ['muscle','nerve','wits','tech','streetwise','presence'];
+  const stats = s.stats || {};
+  document.getElementById('sheet-stats').innerHTML =
+    statOrder.filter(k => k in stats).map(k => row(k, stats[k])).join('') || '<div class="empty">—</div>';
+
+  const exits = (s.exits || []).map(e => row('exit', e.name || e.id)).join('');
+  const npcs = (s.npcs || []).map(n => {
+    const d = n.disposition;
+    const cls = d < 0 ? 'neg' : (d > 0 ? 'pos' : '');
+    const tag = n.alive ? '' : ' (dead)';
+    return row(n.name || n.id, (d>0?'+':'') + d + tag, cls);
+  }).join('');
+  document.getElementById('sheet-here').innerHTML =
+    (exits || '<div class="empty">no exits</div>') +
+    '<div style="height:.6rem"></div>' +
+    (npcs || '<div class="empty">no one here</div>');
+
+  const inv = (s.inventory || []).map(i =>
+    row(i.name + (i.quantity > 1 ? ' ×'+i.quantity : ''), i.kind)).join('');
+  document.getElementById('sheet-inv').innerHTML = inv || '<div class="empty">empty</div>';
+
   if (s.ended) {
     el('dead', '— ' + (s.cause_of_death || 'you died') + ' —');
     setEnabled(false); runId = null; localStorage.removeItem('hl_run');
@@ -111,14 +180,14 @@ function setEnabled(on) {
 async function newGame() {
   const body = {
     character_name: document.getElementById('name').value || 'Drifter',
-    start_location: document.getElementById('start').value || 'loc_tram_hub',
+    start_location: document.getElementById('start').value || 'loc_saltgate',
   };
   const r = await fetch('/runs', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
   if (!r.ok) { sys('could not start: ' + r.status + ' (is the world ingested?)'); return; }
   const s = await r.json();
   runId = s.run_id; localStorage.setItem('hl_run', runId);
   log.innerHTML = '';
-  sys('You came to on the ' + s.location_id + '. The halflight did not change.');
+  sys('You came to in ' + (s.location_name || s.location_id) + '. The halflight did not change.');
   renderState(s); setEnabled(true);
 }
 
@@ -127,7 +196,7 @@ async function loadState(id) {
   if (!r.ok) return false;
   const s = await r.json();
   runId = id; renderState(s); setEnabled(!s.ended);
-  sys('(resumed run ' + id + ')');
+  sys('(resumed — ' + (s.location_name || s.location_id) + ')');
   return true;
 }
 
@@ -135,11 +204,13 @@ async function act(text) {
   if (busy || !runId) return;
   busy = true; setEnabled(false);
   el('you', text);
+  const thinking = el('thinking', '…');
   const narr = el('narr', '');
+  let started = false;
   try {
     const resp = await fetch('/turn', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({run_id: runId, text})});
-    if (!resp.ok) { narr.textContent = '[the engine refused: ' + resp.status + ']'; return; }
+    if (!resp.ok) { thinking.remove(); narr.textContent = '[the engine refused: ' + resp.status + ']'; return; }
     const reader = resp.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
@@ -149,6 +220,7 @@ async function act(text) {
       buf += dec.decode(value, {stream:true});
       let i;
       while ((i = buf.indexOf('\n\n')) >= 0) {
+        if (!started) { thinking.remove(); started = true; }
         handleFrame(buf.slice(0, i), narr);
         buf = buf.slice(i + 2);
       }
@@ -156,6 +228,7 @@ async function act(text) {
   } catch (e) {
     narr.textContent += '\n[connection lost]';
   } finally {
+    thinking.remove();
     busy = false;
     if (runId) setEnabled(true);
   }
@@ -169,20 +242,19 @@ function handleFrame(frame, narr) {
   }
   const p = data ? JSON.parse(data) : {};
   if (event === 'token') { narr.textContent += p.text; scroll(); }
-  else if (event === 'correction') {
-    const c = el('correction', p.text);
-  }
+  else if (event === 'correction') el('correction', p.text);
   else if (event === 'state') renderState(p);
 }
 
 document.getElementById('new').addEventListener('click', newGame);
+document.getElementById('sheetBtn').addEventListener('click', () =>
+  document.getElementById('sheet').classList.toggle('open'));
 document.getElementById('form').addEventListener('submit', (e) => {
   e.preventDefault();
   const t = input.value.trim();
   if (t) { input.value = ''; act(t); }
 });
 
-// Resume a prior run if one is stored.
 const saved = localStorage.getItem('hl_run');
 if (saved) { loadState(saved).then(ok => { if (!ok) sys('start a new game.'); }); }
 else sys('press "new game" to begin.');
