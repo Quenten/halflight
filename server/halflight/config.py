@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     llama_chat_url: str = "http://127.0.0.1:8080"
     llama_embed_url: str = "http://127.0.0.1:8081"
     vault_path: str = "vault"
+    logs_dir: str = "logs"
 
 
 @lru_cache
