@@ -1,0 +1,93 @@
+"""Runtime tables — per-playthrough state. Written by the engine, never the vault.
+
+Timestamps are timezone-aware (TIMESTAMPTZ) and set explicitly by the engine at
+insert time, sidestepping SQLModel's sa_column/default conflict.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import ARRAY, Column, DateTime, Index, Text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlmodel import Field, SQLModel
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def _ts_col(*, nullable: bool) -> Column[Any]:
+    return Column(DateTime(timezone=True), nullable=nullable)
+
+
+def _jsonb() -> Column[Any]:
+    return Column(JSONB, nullable=False, server_default="{}")
+
+
+class Run(SQLModel, table=True):
+    __tablename__ = "runs"
+
+    id: int | None = Field(default=None, primary_key=True)
+    character_name: str
+    archetype: str = ""
+    started_at: datetime = Field(sa_column=_ts_col(nullable=False))
+    ended_at: datetime | None = Field(default=None, sa_column=_ts_col(nullable=True))
+    cause_of_death: str | None = None
+
+
+class PlayerState(SQLModel, table=True):
+    __tablename__ = "player_state"
+
+    run_id: int = Field(primary_key=True, foreign_key="runs.id")
+    hp: int
+    credits: int = 0
+    location_id: str
+    stats: dict[str, Any] = Field(default_factory=dict, sa_column=_jsonb())
+    time_ticks: int = 0
+
+
+class Inventory(SQLModel, table=True):
+    __tablename__ = "inventory"
+
+    run_id: int = Field(primary_key=True, foreign_key="runs.id")
+    item_id: str = Field(primary_key=True)
+    quantity: int = 1
+
+
+class NpcState(SQLModel, table=True):
+    __tablename__ = "npc_state"
+
+    run_id: int = Field(primary_key=True, foreign_key="runs.id")
+    npc_id: str = Field(primary_key=True)
+    hp: int
+    alive: bool = True
+    disposition: int = 0
+    current_location: str
+
+
+class FactionRep(SQLModel, table=True):
+    __tablename__ = "faction_rep"
+
+    run_id: int = Field(primary_key=True, foreign_key="runs.id")
+    faction_id: str = Field(primary_key=True)
+    rep: int = 0
+
+
+class Event(SQLModel, table=True):
+    __tablename__ = "events"
+    __table_args__ = (Index("ix_events_run_turn", "run_id", "turn_no"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    run_id: int = Field(foreign_key="runs.id")
+    turn_no: int
+    action: dict[str, Any] = Field(default_factory=dict, sa_column=_jsonb())
+    result: dict[str, Any] = Field(default_factory=dict, sa_column=_jsonb())
+    significance: int = 0
+    location_id: str | None = None
+    witnesses: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(ARRAY(Text), nullable=False, server_default="{}"),
+    )
+    ts: datetime = Field(sa_column=_ts_col(nullable=False))
