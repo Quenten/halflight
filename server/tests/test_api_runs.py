@@ -49,3 +49,34 @@ def test_create_run_and_get_state(
 
 def test_state_unknown_run_404(client: TestClient) -> None:
     assert client.get("/state", params={"run_id": 999999}).status_code == 404
+
+
+def test_chargen_data(client: TestClient) -> None:
+    data = client.get("/chargen").json()
+    assert len(data["classes"]) == 4
+    assert [s["id"] for s in data["steps"]] == ["upbringing", "marked", "ran_with", "last_job"]
+
+
+def test_create_run_via_chargen(
+    client: TestClient, session: Session, fake_embedder: FakeEmbedder
+) -> None:
+    run_ingest(FIXTURE, session, fake_embedder)
+    body = {
+        "character_name": "Vex",
+        "class_id": "fixer",
+        "choices": {
+            "upbringing": "sump", "marked": "ambition",
+            "ran_with": "fixer", "last_job": "runner",
+        },
+    }
+    resp = client.post("/runs/chargen", json=body)
+    assert resp.status_code == 200
+    out = resp.json()
+    assert out["state"]["character_name"] == "Vex"
+    assert out["state"]["stats"]["streetwise"] >= 15  # fixer 15 + sump upbringing +1
+    assert len(out["backstory"]) == 4
+
+
+def test_chargen_unknown_class_400(client: TestClient) -> None:
+    resp = client.post("/runs/chargen", json={"character_name": "X", "class_id": "nope"})
+    assert resp.status_code == 400

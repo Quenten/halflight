@@ -50,6 +50,49 @@ class ItemBrief(BaseModel):
     quantity: int
 
 
+class ClassOut(BaseModel):
+    id: str
+    name: str
+    hp: int
+    credits: int
+    items: list[str]  # display names
+    blurb: str
+
+
+class OptionOut(BaseModel):
+    id: str
+    name: str
+    blurb: str
+    hint: str
+
+
+class StepOut(BaseModel):
+    id: str
+    title: str
+    prompt: str
+    rolls: bool
+    options: list[OptionOut]
+
+
+class ChargenData(BaseModel):
+    classes: list[ClassOut]
+    steps: list[StepOut]
+
+
+class ChargenRequest(BaseModel):
+    character_name: str = "Drifter"
+    class_id: str
+    choices: dict[str, str] = Field(default_factory=dict)
+
+
+class BuildStepOut(BaseModel):
+    step_title: str
+    option_name: str
+    outcome_kind: str
+    text: str
+    summary: str
+
+
 class StateResponse(BaseModel):
     run_id: int
     character_name: str
@@ -64,3 +107,8 @@ class StateResponse(BaseModel):
     exits: list[ExitBrief]
     npcs: list[NpcBrief]
     inventory: list[ItemBrief]
+
+
+class ChargenResult(BaseModel):
+    state: StateResponse
+    backstory: list[BuildStepOut]

@@ -7,13 +7,22 @@ from sqlmodel import Session, SQLModel, col, select
 
 from halflight.api.deps import SessionDep
 from halflight.api.schemas import (
+    BuildStepOut,
+    ChargenData,
+    ChargenRequest,
+    ChargenResult,
+    ClassOut,
     ExitBrief,
     ItemBrief,
     LocationBrief,
     NpcBrief,
+    OptionOut,
     StartRunRequest,
     StateResponse,
+    StepOut,
 )
+from halflight.engine.dice import Dice
+from halflight.engine.lifepath import CLASSES, STEPS, resolve_build
 from halflight.engine.state import load_state
 from halflight.engine.turn import start_run
 from halflight.models import Item, Location, Npc, Run
@@ -25,6 +34,53 @@ router = APIRouter()
 def list_locations(session: SessionDep) -> list[LocationBrief]:
     rows = session.exec(select(Location).order_by(col(Location.name))).all()
     return [LocationBrief(id=r.id, name=r.name) for r in rows]
+
+
+@router.get("/chargen", response_model=ChargenData)
+def chargen_data(session: SessionDep) -> ChargenData:
+    classes = [
+        ClassOut(
+            id=c.id, name=c.name, hp=c.hp, credits=c.credits,
+            items=[_name(session, Item, i) for i in c.items], blurb=c.blurb,
+        )
+        for c in CLASSES
+    ]
+    steps = [
+        StepOut(
+            id=s.id, title=s.title, prompt=s.prompt, rolls=s.rolls,
+            options=[
+                OptionOut(id=o.id, name=o.name, blurb=o.blurb, hint=o.hint) for o in s.options
+            ],
+        )
+        for s in STEPS
+    ]
+    return ChargenData(classes=classes, steps=steps)
+
+
+@router.post("/runs/chargen", response_model=ChargenResult)
+def create_run_chargen(req: ChargenRequest, session: SessionDep) -> ChargenResult:
+    try:
+        build = resolve_build(req.class_id, req.choices, Dice())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    run_id = start_run(
+        session,
+        character_name=req.character_name,
+        start_location=build.start_location,
+        stats=build.stats,
+        hp=build.hp,
+        archetype=req.class_id,
+        credits=build.credits,
+        inventory=build.inventory,
+    )
+    backstory = [
+        BuildStepOut(
+            step_title=b.step_title, option_name=b.option_name,
+            outcome_kind=b.outcome_kind, text=b.text, summary=b.summary,
+        )
+        for b in build.backstory
+    ]
+    return ChargenResult(state=snapshot(session, run_id), backstory=backstory)
 
 
 def _name(session: Session, model: type[SQLModel], id_: str) -> str:
