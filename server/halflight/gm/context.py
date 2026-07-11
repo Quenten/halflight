@@ -27,7 +27,10 @@ def describe_result(result: TurnResult) -> str:
 
 
 def build_context(
-    state: GameState, result: TurnResult, retrieved: list[RetrievedChunk]
+    state: GameState,
+    result: TurnResult,
+    retrieved: list[RetrievedChunk],
+    player_text: str,
 ) -> str:
     p = state.player
     loc = state.location.name or state.location.id
@@ -65,13 +68,19 @@ def build_context(
         )
 
     parts.append(
-        "## What just happened (absolute truth; never contradict)\n" + describe_result(result)
+        f'## What the player just did (their exact words)\n"{player_text}"\n'
+        "Narrate THIS specifically — engage with what they actually said or did, do not give a"
+        " generic scene description. If they asked a question, ANSWER it: have a present character"
+        " reply in their own voice, or the character recalls it from the background lore above"
+        " (if it isn't known, say plainly that they don't know). If they attempted an action,"
+        " describe that attempt and how it went."
     )
     parts.append(
-        "Narrate this turn. Second person, past tense. Keep it TIGHT — 40 to 110 words, one or"
-        " two short paragraphs. Err short. Stay at the current location with only the people listed"
-        " as present. If the player asks who or what something is, answer briefly from the"
-        " background lore (what the character knows); if it isn't there, they don't know."
-        " Do not ask questions."
+        "## Mechanical outcome (absolute truth; never contradict)\n" + describe_result(result)
+    )
+    parts.append(
+        "Write the narration now. Second person, past tense, 40-110 words, err short. Respond"
+        " directly to the player's words above. Stay at the current location with only the people"
+        " listed as present. Do not ask the player questions."
     )
     return "\n\n".join(parts)

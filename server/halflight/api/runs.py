@@ -3,15 +3,28 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from sqlmodel import Session, SQLModel
+from sqlmodel import Session, SQLModel, col, select
 
 from halflight.api.deps import SessionDep
-from halflight.api.schemas import ExitBrief, ItemBrief, NpcBrief, StartRunRequest, StateResponse
+from halflight.api.schemas import (
+    ExitBrief,
+    ItemBrief,
+    LocationBrief,
+    NpcBrief,
+    StartRunRequest,
+    StateResponse,
+)
 from halflight.engine.state import load_state
 from halflight.engine.turn import start_run
 from halflight.models import Item, Location, Npc, Run
 
 router = APIRouter()
+
+
+@router.get("/locations", response_model=list[LocationBrief])
+def list_locations(session: SessionDep) -> list[LocationBrief]:
+    rows = session.exec(select(Location).order_by(col(Location.name))).all()
+    return [LocationBrief(id=r.id, name=r.name) for r in rows]
 
 
 def _name(session: Session, model: type[SQLModel], id_: str) -> str:

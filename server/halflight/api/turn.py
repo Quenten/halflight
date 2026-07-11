@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -54,10 +55,16 @@ def turn(
     # --- everything that needs the DB, done before streaming ---
     state = load_state(session, req.run_id)
     parse_system = parser_prompt(vault)
-    action = parse_intent(req.text, state, chat, system=parse_system)
-    result = take_turn(session, req.run_id, action, None)
-    retrieved = retrieve(req.text, embedder, session, k=6)
-    context = build_context(state, result, retrieved)
+    try:
+        action = parse_intent(req.text, state, chat, system=parse_system)
+        result = take_turn(session, req.run_id, action, None)
+        retrieved = retrieve(req.text, embedder, session, k=6)
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="model server unreachable — is llama-server running? (see README)",
+        ) from exc
+    context = build_context(state, result, retrieved, req.text)
     narrate_system = system_prompt(vault)
     parse_prompt_text = build_prompt(parse_system, state, req.text)
     snap = snapshot(session, req.run_id).model_dump()

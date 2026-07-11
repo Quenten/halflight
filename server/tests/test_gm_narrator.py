@@ -87,16 +87,17 @@ def test_build_context_includes_lore_and_result() -> None:
         npcs={"npc_dax": NpcView(id="npc_dax", hp=15, stats={}, location_id="loc_a")},
     )
     chunks = [RetrievedChunk("lore_x", "lore", "The Saltline runs the under-levels.", 0.1)]
-    ctx = build_context(state, _move_ok(), chunks)
+    ctx = build_context(state, _move_ok(), chunks, "go to the under-levels")
     assert "Saltline" in ctx
     assert "outcome: success" in ctx
     assert "npc_dax" in ctx
+    assert "go to the under-levels" in ctx
 
 
 def test_empty_retrieval_states_ignorance() -> None:
     state = GameState(player=PlayerView(hp=15, location_id="loc_a", stats={}),
                       location=LocationView(id="loc_a"))
-    ctx = build_context(state, _move_ok(), [])
+    ctx = build_context(state, _move_ok(), [], "look around")
     assert "does not know" in ctx
 
 

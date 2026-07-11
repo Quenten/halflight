@@ -26,6 +26,11 @@ class TurnRequest(BaseModel):
     text: str
 
 
+class LocationBrief(BaseModel):
+    id: str
+    name: str
+
+
 class NpcBrief(BaseModel):
     id: str
     name: str

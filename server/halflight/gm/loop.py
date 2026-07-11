@@ -56,7 +56,7 @@ def play_turn(
     result = take_turn(session, run_id, action, dice)
 
     retrieved = retrieve(text, embedder, session, k=6)
-    context = build_context(state, result, retrieved)
+    context = build_context(state, result, retrieved, text)
     narration = narrate(chat, system=system_prompt(vault_path), context=context, result=result)
 
     turn_no = current_turn_no(session, run_id)
