@@ -64,7 +64,7 @@ CLASSES: list[ClassDef] = [
     ClassDef(
         id="enforcer", name="Enforcer", hp=24, credits=40,
         stats={"muscle": 14, "nerve": 12, "wits": 9, "tech": 8, "streetwise": 11, "presence": 10},
-        items=["itm_rail_maul", "itm_stimshot"],
+        items=["itm_rail_maul", "itm_flak_vest", "itm_stimshot"],
         blurb="You break what needs breaking. The Saltline pays for that, when it pays.",
     ),
     ClassDef(

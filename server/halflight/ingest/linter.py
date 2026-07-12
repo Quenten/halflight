@@ -47,7 +47,7 @@ REQUIRED_FIELDS: dict[str, set[str]] = {
 }
 
 STAT_KEYS = {"muscle", "nerve", "wits", "tech", "streetwise", "presence"}
-ITEM_KINDS = {"weapon", "consumable", "key", "misc"}
+ITEM_KINDS = {"weapon", "armor", "consumable", "key", "misc"}
 
 # Ids the engine reserves for non-vault entities. A note may not claim these.
 RESERVED_IDS = {"player", "world", "scene", "gm", "system", "none", "null", "self"}

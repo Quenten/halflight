@@ -92,6 +92,21 @@ def test_attack_absent_target_invalid() -> None:
     assert not res.valid and res.outcome == "invalid"
 
 
+def test_armor_soaks_retaliation() -> None:
+    def player_hit_dmg(with_armor: bool) -> int:
+        state = make_state(player_hp=30)
+        if with_armor:
+            state.player.inventory["itm_vest"] = 1
+            state.items["itm_vest"] = ItemView(id="itm_vest", kind="armor", effects={"armor": 2})
+        # Player misses; NPC retaliates hard so damage is well above the floor.
+        res = resolve(state, Attack(target="npc_thug"), SeqRoller([1, 20]))
+        return int(
+            next(-c.delta for c in res.state_changes if c.entity == "player" and c.field == "hp")
+        )
+
+    assert player_hit_dmg(with_armor=True) == player_hit_dmg(with_armor=False) - 2
+
+
 def test_uses_best_owned_weapon() -> None:
     state = make_state()
     state.player.inventory["itm_maul"] = 1

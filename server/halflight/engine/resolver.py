@@ -46,6 +46,18 @@ def _invalid(action: Action, reason: str) -> TurnResult:
     return TurnResult(action=action, valid=False, reason=reason, outcome="invalid")
 
 
+def _player_armor(state: GameState) -> int:
+    """Best armor value the player is carrying (soaks incoming damage)."""
+    vals = [
+        int(state.items[i].effects["armor"])
+        for i in state.player.inventory
+        if i in state.items
+        and state.items[i].kind == "armor"
+        and isinstance(state.items[i].effects.get("armor"), int)
+    ]
+    return max(vals, default=0)
+
+
 def _weapon_base(state: GameState, method: str | None) -> int:
     owned = [
         state.items[i]
@@ -146,7 +158,7 @@ def _resolve_attack(state: GameState, action: Attack, dice: Roller) -> TurnResul
         retaliation = dice.d20() + stat_mod(npc.stat("muscle"))
         player_def = BASE_DEFENSE + stat_mod(state.player.stat("nerve"))
         if retaliation >= player_def:
-            rdmg = max(1, UNARMED_DAMAGE + (retaliation - player_def) // 2)
+            rdmg = max(1, UNARMED_DAMAGE + (retaliation - player_def) // 2 - _player_armor(state))
             changes.append(StateChange(entity="player", field="hp", delta=-rdmg))
             if state.player.hp - rdmg <= 0:
                 events.append(SceneEvent(kind="player_died", detail={"by": npc.id}))
