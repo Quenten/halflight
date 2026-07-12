@@ -123,3 +123,14 @@ class StateResponse(BaseModel):
 class ChargenResult(BaseModel):
     state: StateResponse
     backstory: list[BuildStepOut]
+
+
+class TurnRecord(BaseModel):
+    turn_no: int
+    player_text: str
+    narration: str
+
+
+class HistoryResponse(BaseModel):
+    run_id: int
+    turns: list[TurnRecord]

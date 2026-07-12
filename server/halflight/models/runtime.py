@@ -98,6 +98,20 @@ class Event(SQLModel, table=True):
     ts: datetime = Field(sa_column=_ts_col(nullable=False))
 
 
+class Narration(SQLModel, table=True):
+    """The prose the narrator produced for a turn, kept so a resumed run can
+    replay its story log (the Event row keeps only the mechanical action/result)."""
+
+    __tablename__ = "narrations"
+    __table_args__ = (Index("ix_narrations_run_turn", "run_id", "turn_no"),)
+
+    run_id: int = Field(primary_key=True, foreign_key="runs.id")
+    turn_no: int = Field(primary_key=True)
+    player_text: str = Field(sa_column=Column(Text, nullable=False))
+    body: str = Field(sa_column=Column(Text, nullable=False))
+    ts: datetime = Field(sa_column=_ts_col(nullable=False))
+
+
 class EventChunk(SQLModel, table=True):
     """One embedded, one-line factual memory of a significant event (M6)."""
 

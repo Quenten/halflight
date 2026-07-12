@@ -51,6 +51,36 @@ def test_state_unknown_run_404(client: TestClient) -> None:
     assert client.get("/state", params={"run_id": 999999}).status_code == 404
 
 
+def test_history_replays_turns_oldest_first(
+    client: TestClient, session: Session, fake_embedder: FakeEmbedder
+) -> None:
+    from halflight.engine.turn import start_run
+    from halflight.models import Narration
+    from halflight.models.runtime import utcnow
+
+    run_ingest(FIXTURE, session, fake_embedder)
+    run_id = start_run(
+        session, character_name="Vex", start_location="loc_tram_hub",
+        stats={"muscle": 10}, hp=15,
+    )
+    for turn_no, (pt, body) in enumerate(
+        [("look around", "The deck hums."), ("ask dax", "Dax grunts.")], start=1
+    ):
+        session.add(
+            Narration(run_id=run_id, turn_no=turn_no, player_text=pt, body=body, ts=utcnow())
+        )
+    session.flush()
+
+    turns = client.get("/history", params={"run_id": run_id}).json()["turns"]
+    assert [t["turn_no"] for t in turns] == [1, 2]  # oldest first
+    assert turns[0]["player_text"] == "look around"
+    assert turns[1]["narration"] == "Dax grunts."
+
+
+def test_history_empty_for_new_run(client: TestClient) -> None:
+    assert client.get("/history", params={"run_id": 424242}).json()["turns"] == []
+
+
 def test_chargen_data(client: TestClient) -> None:
     data = client.get("/chargen").json()
     assert len(data["classes"]) == 4

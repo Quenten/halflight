@@ -17,11 +17,13 @@ from collections.abc import Iterator
 import httpx
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+from sqlmodel import Session
 
 from halflight.api.deps import ChatDep, EmbedderDep, SessionDep
 from halflight.api.runs import snapshot
 from halflight.api.schemas import TurnRequest
 from halflight.config import get_settings
+from halflight.db import engine
 from halflight.engine.state import load_state
 from halflight.engine.turn import current_turn_no, take_turn
 from halflight.gm.context import build_context
@@ -34,13 +36,32 @@ from halflight.gm.retrieval import location_lore, retrieve
 from halflight.gm.secrets import maybe_reveal_on_investigate
 from halflight.gm.summary import format_summary, latest_summary, maybe_summarize
 from halflight.gm.turnlog import log_turn
-from halflight.models import Run
+from halflight.models import Narration, Run
+from halflight.models.runtime import utcnow
 
 router = APIRouter()
 
 
 def _sse(event: str, data: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+def _save_narration(run_id: int, turn_no: int, player_text: str, body: str) -> None:
+    """Persist the turn's prose so a resumed run can replay its story log. Runs inside
+    the streaming body, after the request session is gone, so it opens its own
+    short-lived session. Best-effort: the turn already happened and is logged to disk,
+    so a persistence hiccup must never break the stream."""
+    try:
+        with Session(engine) as s:
+            s.merge(
+                Narration(
+                    run_id=run_id, turn_no=turn_no,
+                    player_text=player_text, body=body, ts=utcnow(),
+                )
+            )
+            s.commit()
+    except Exception:  # noqa: BLE001 - persistence is best-effort, never fatal to a turn
+        pass
 
 
 @router.post("/turn")
@@ -110,6 +131,7 @@ def turn(
             parse_output=action.model_dump_json(), narration_context=context,
             narration=narration, action=action.model_dump(), result=result.model_dump(),
         )
+        _save_narration(req.run_id, turn_no, req.text, narration)
         yield _sse("state", snap)
         yield _sse("done", {})
 

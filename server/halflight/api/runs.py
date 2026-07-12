@@ -14,6 +14,7 @@ from halflight.api.schemas import (
     ClassOut,
     ExitBrief,
     FactionStanding,
+    HistoryResponse,
     ItemBrief,
     LocationBrief,
     NpcBrief,
@@ -21,6 +22,7 @@ from halflight.api.schemas import (
     StartRunRequest,
     StateResponse,
     StepOut,
+    TurnRecord,
 )
 from halflight.engine.clock import shift_for
 from halflight.engine.dice import Dice
@@ -28,7 +30,7 @@ from halflight.engine.gamestate import effective_disposition
 from halflight.engine.lifepath import CLASSES, STEPS, resolve_build
 from halflight.engine.state import load_state
 from halflight.engine.turn import start_run
-from halflight.models import Faction, Item, Location, Npc, Run
+from halflight.models import Faction, Item, Location, Narration, Npc, Run
 
 router = APIRouter()
 
@@ -163,3 +165,19 @@ def create_run(req: StartRunRequest, session: SessionDep) -> StateResponse:
 @router.get("/state", response_model=StateResponse)
 def get_state(run_id: int, session: SessionDep) -> StateResponse:
     return snapshot(session, run_id)
+
+
+@router.get("/history", response_model=HistoryResponse)
+def get_history(run_id: int, session: SessionDep, limit: int = 20) -> HistoryResponse:
+    """The last `limit` turns of prose, oldest first, so a resumed run replays its log."""
+    rows = session.exec(
+        select(Narration)
+        .where(col(Narration.run_id) == run_id)
+        .order_by(col(Narration.turn_no).desc())
+        .limit(limit)
+    ).all()
+    turns = [
+        TurnRecord(turn_no=r.turn_no, player_text=r.player_text, narration=r.body)
+        for r in reversed(rows)
+    ]
+    return HistoryResponse(run_id=run_id, turns=turns)

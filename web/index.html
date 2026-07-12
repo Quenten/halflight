@@ -290,8 +290,21 @@ async function loadState(id) {
   if (!r.ok) return false;
   const s = await r.json();
   runId = id; creator.classList.add('hidden'); renderState(s); setEnabled(!s.ended);
+  await replayHistory(id);
   sys('(resumed — ' + (s.location_name || s.location_id) + ')');
   return true;
+}
+
+async function replayHistory(id) {
+  try {
+    const r = await fetch('/history?run_id=' + id);
+    if (!r.ok) return;
+    const h = await r.json();
+    for (const t of (h.turns || [])) {
+      if (t.player_text) el('you', t.player_text);
+      if (t.narration) el('narr', t.narration);
+    }
+  } catch (e) {}
 }
 
 async function act(text) {
