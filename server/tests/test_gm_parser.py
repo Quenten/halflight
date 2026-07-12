@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from halflight.engine.actions import Attack, Custom, Investigate, Move, Talk
-from halflight.engine.gamestate import GameState, LocationView, NpcView, PlayerView
+from halflight.engine.actions import Attack, Custom, Investigate, Move, Talk, UseItem
+from halflight.engine.gamestate import GameState, ItemView, LocationView, NpcView, PlayerView
 from halflight.gm.parser import parse_intent, render_scene
 
 
@@ -104,8 +104,68 @@ def test_firing_inflection_is_attack() -> None:
     assert isinstance(action, Attack) and action.target == "npc_dax"
 
 
+def _two_npc_state() -> GameState:
+    # Two people present; you've angered the syndicate, so Dax is the hostile one.
+    return GameState(
+        player=PlayerView(hp=15, location_id="loc_a", stats={}),
+        location=LocationView(id="loc_a", connections=["loc_b"]),
+        npcs={
+            "npc_dax": NpcView(
+                id="npc_dax", hp=15, stats={}, location_id="loc_a", faction_id="fac_syndicate"
+            ),
+            "npc_thane": NpcView(
+                id="npc_thane", hp=15, stats={}, location_id="loc_a", disposition=5
+            ),
+        },
+        faction_rep={"fac_syndicate": -3},
+    )
+
+
+def test_followup_attack_with_crowd_hits_most_hostile() -> None:
+    # The exact bug: "keep attacking" with two people present and no name used to
+    # fizzle (no target resolved). It must continue the fight with whoever you angered.
+    client = FakeClient(['{"kind": "investigate", "target": null}'])
+    action = parse_intent("I keep attacking, no mercy", _two_npc_state(), client, system="SYS")
+    assert isinstance(action, Attack) and action.target == "npc_dax"
+
+
+def test_named_attack_in_crowd_hits_the_named() -> None:
+    client = FakeClient(['{"kind": "investigate", "target": null}'])
+    action = parse_intent("I hit Thane again", _two_npc_state(), client, system="SYS")
+    assert isinstance(action, Attack) and action.target == "npc_thane"
+
+
 def test_violence_about_someone_is_not_forced() -> None:
     # A question mentioning violence shouldn't become an attack.
     client = FakeClient(['{"kind": "talk", "target": "npc_dax"}'])
     action = parse_intent("ask Dax who I should kill next", make_state(), client, system="SYS")
     assert isinstance(action, Talk)
+
+
+def _item_state() -> GameState:
+    return GameState(
+        player=PlayerView(hp=10, location_id="loc_a", stats={}, inventory={"itm_stimshot": 1}),
+        location=LocationView(id="loc_a", connections=["loc_b"]),
+        items={"itm_stimshot": ItemView(id="itm_stimshot", kind="consumable", name="Stimshot")},
+    )
+
+
+def test_use_item_guarded_from_investigate() -> None:
+    # The exact bug: "use my stimshot" came back as investigate and never healed.
+    client = FakeClient(['{"kind": "investigate", "target": null}'])
+    action = parse_intent("I use my stimshot", _item_state(), client, system="SYS")
+    assert isinstance(action, UseItem) and action.item == "itm_stimshot"
+
+
+def test_use_item_id_normalized_to_inventory() -> None:
+    # Model picks the item but with a bare id; repair it to the carried id.
+    client = FakeClient(['{"kind": "use_item", "item": "stimshot"}'])
+    action = parse_intent("jab the stim", _item_state(), client, system="SYS")
+    assert isinstance(action, UseItem) and action.item == "itm_stimshot"
+
+
+def test_use_verb_without_carried_item_is_not_use() -> None:
+    # "drink at the bar" names no carried item — must not become a use_item.
+    client = FakeClient(['{"kind": "investigate", "target": null}'])
+    action = parse_intent("drink at the bar", _item_state(), client, system="SYS")
+    assert not isinstance(action, UseItem)

@@ -12,8 +12,17 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from halflight.engine.actions import Action, Attack, Custom, Investigate, Move, Talk, parse_action
-from halflight.engine.gamestate import GameState
+from halflight.engine.actions import (
+    Action,
+    Attack,
+    Custom,
+    Investigate,
+    Move,
+    Talk,
+    UseItem,
+    parse_action,
+)
+from halflight.engine.gamestate import GameState, effective_disposition
 from halflight.gm.client import LLMClient
 
 _GRAMMAR_PATH = Path(__file__).parent / "grammars" / "action.gbnf"
@@ -24,6 +33,13 @@ _TRAVEL = re.compile(
     r"\b(go|going|goes|head|heading|move|moving|walk|walking|run|running|enter|"
     r"leave|leaving|travel|descend|climb|sneak|creep|return|toward|towards|into|"
     r"back to|down to|up to|over to|out to)\b",
+    re.IGNORECASE,
+)
+# Using/consuming a carried item. Kept off generic verbs like "take" (too easily a
+# move) — the guard only fires when one of these sits next to an item you actually carry.
+_USE = re.compile(
+    r"\b(use\w*|using|drink\w*|drank|inject\w*|jab\w*|pop\w*|apply\w*|applies|consum\w*|"
+    r"swig\w*|dose\w*|swallow\w*|patch\w*|guzzl\w*|slam\w*|shoot\s+up|shot\s+up)\b",
     re.IGNORECASE,
 )
 _TALK = re.compile(
@@ -88,17 +104,55 @@ def _coerce(raw: str) -> Action | None:
         return None
 
 
-def _present_npc(text: str, state: GameState) -> str | None:
+def _named_npc(text: str, state: GameState) -> str | None:
+    """A present, living NPC the text names explicitly (by id, short id, or name)."""
     low = text.lower()
-    alive = [n for n in state.npcs.values() if n.alive]
-    for n in alive:
+    for n in state.npcs.values():
+        if not n.alive:
+            continue
         short = n.id.split("_", 1)[-1]  # npc_dax -> dax
         if short in low or n.id in low or (n.name and n.name.lower() in low):
             return n.id
+    return None
+
+
+def _present_npc(text: str, state: GameState) -> str | None:
+    named = _named_npc(text, state)
+    if named is not None:
+        return named
     # "keep attacking", "hit him" — no name, but only one person is here.
+    alive = [n for n in state.npcs.values() if n.alive]
     if len(alive) == 1:
         return alive[0].id
     return None
+
+
+def _carried_item(text: str | None, state: GameState) -> str | None:
+    """A carried item the text refers to, by inventory id, short id, or display name."""
+    if not text:
+        return None
+    low = text.lower()
+    for iid in state.player.inventory:
+        item = state.items.get(iid)
+        candidates = [iid.lower(), iid.split("_", 1)[-1].lower()]
+        if item is not None and item.name:
+            candidates.append(item.name.lower())
+        if any(c and c in low for c in candidates):
+            return iid
+    return None
+
+
+def _violence_target(text: str, state: GameState) -> str | None:
+    """Who a violent action hits: whoever is named, else — for a follow-up like
+    'keep attacking' with no name — the most hostile person present, so the fight
+    continues with whoever you already angered rather than fizzling."""
+    named = _named_npc(text, state)
+    if named is not None:
+        return named
+    alive = [n for n in state.npcs.values() if n.alive]
+    if not alive:
+        return None
+    return min(alive, key=lambda n: effective_disposition(n, state.faction_rep)).id
 
 
 def _guard(action: Action, text: str, state: GameState) -> Action:
@@ -107,11 +161,26 @@ def _guard(action: Action, text: str, state: GameState) -> Action:
     with no travel cue is a spurious teleport."""
     npc = _present_npc(text, state)
 
-    # Violence toward a present NPC — unless they're only being spoken about.
-    if npc is not None and _VIOLENCE.search(text) and not _TALK.search(text):
-        if not isinstance(action, Attack):
-            return Attack(target=npc)
-        return action
+    # Violence at someone present — unless they're only being spoken about. Works even
+    # when no one is named (a follow-up 'keep attacking' hits the most hostile person).
+    if _VIOLENCE.search(text) and not _TALK.search(text):
+        target = _violence_target(text, state)
+        if target is not None:
+            if not isinstance(action, Attack) or action.target not in state.npcs:
+                return Attack(target=target)
+            return action
+
+    # Using/consuming a carried item — the model often labels this 'investigate'.
+    # Also repair a UseItem whose id doesn't match anything you carry (e.g. "stimshot"
+    # instead of "itm_stimshot").
+    if isinstance(action, UseItem) and action.item not in state.player.inventory:
+        item = _carried_item(action.item, state) or _carried_item(text, state)
+        if item is not None:
+            return UseItem(item=item)
+    elif not isinstance(action, UseItem) and _USE.search(text):
+        item = _carried_item(text, state)
+        if item is not None:
+            return UseItem(item=item)
 
     # Addressing a present NPC that the model turned into a move.
     if npc is not None and _TALK.search(text) and isinstance(action, Move):
