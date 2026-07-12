@@ -252,8 +252,14 @@ function renderState(s) {
     const d = n.disposition, cls = d < 0 ? 'neg' : (d > 0 ? 'pos' : '');
     return row((n.name||n.id) + (n.alive ? '' : ' (dead)'), (d>0?'+':'') + d, cls);
   }).join('') || '<div class="empty">no one here</div>';
+  const standing = (s.standing || []).map(f => {
+    const cls = f.rep < 0 ? 'neg' : (f.rep > 0 ? 'pos' : '');
+    return row(f.name, (f.rep > 0 ? '+' : '') + f.rep, cls);
+  }).join('');
   document.getElementById('sheet-here').innerHTML =
-    '<div class="sub">EXITS</div>' + exits + '<div class="sub">PEOPLE HERE</div>' + npcs;
+    '<div class="sub">EXITS</div>' + exits +
+    '<div class="sub">PEOPLE HERE</div>' + npcs +
+    (standing ? '<div class="sub">STANDING</div>' + standing : '');
 
   const inv = (s.inventory||[]).map(i => row(i.name + (i.quantity>1 ? ' ×'+i.quantity : ''), i.kind)).join('');
   document.getElementById('sheet-inv').innerHTML = inv || '<div class="empty">empty</div>';

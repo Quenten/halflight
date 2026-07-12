@@ -19,7 +19,7 @@ from halflight.engine.gamestate import (
     PlayerView,
 )
 from halflight.engine.results import StateChange, TurnResult
-from halflight.models import Inventory, Item, Location, Npc, NpcState, PlayerState
+from halflight.models import FactionRep, Inventory, Item, Location, Npc, NpcState, PlayerState
 
 
 def load_state(session: Session, run_id: int) -> GameState:
@@ -65,6 +65,11 @@ def load_state(session: Session, run_id: int) -> GameState:
         for it in session.exec(select(Item)).all()
     }
 
+    faction_rep = {
+        r.faction_id: r.rep
+        for r in session.exec(select(FactionRep).where(col(FactionRep.run_id) == run_id)).all()
+    }
+
     player = PlayerView(
         hp=ps.hp,
         location_id=ps.location_id,
@@ -73,15 +78,30 @@ def load_state(session: Session, run_id: int) -> GameState:
         credits=ps.credits,
         time_ticks=ps.time_ticks,
     )
-    return GameState(player=player, location=location, npcs=npcs, items=items)
+    return GameState(
+        player=player, location=location, npcs=npcs, items=items, faction_rep=faction_rep
+    )
 
 
 def apply(session: Session, run_id: int, result: TurnResult) -> None:
     for change in result.state_changes:
         if change.entity == "player":
             _apply_player(session, run_id, change)
+        elif change.entity.startswith("faction:"):
+            _apply_faction(session, run_id, change.entity.split(":", 1)[1], change)
         else:
             _apply_npc(session, run_id, change)
+
+
+def _apply_faction(session: Session, run_id: int, faction_id: str, change: StateChange) -> None:
+    if change.field != "rep":
+        return
+    row = session.get(FactionRep, (run_id, faction_id))
+    if row is None:
+        session.add(FactionRep(run_id=run_id, faction_id=faction_id, rep=int(change.delta)))
+    else:
+        row.rep += int(change.delta)
+        session.add(row)
 
 
 def _apply_player(session: Session, run_id: int, change: StateChange) -> None:

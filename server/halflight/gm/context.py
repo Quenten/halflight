@@ -8,9 +8,19 @@ arrive in M6; this is the M4 bundle.
 
 from __future__ import annotations
 
-from halflight.engine.gamestate import GameState
+from halflight.engine.gamestate import GameState, NpcView, effective_disposition
 from halflight.engine.results import TurnResult
 from halflight.gm.retrieval import RetrievedChunk
+
+
+def _attitude(disposition: int) -> str:
+    if disposition <= -10:
+        return "hostile"
+    if disposition < 0:
+        return "wary"
+    if disposition >= 10:
+        return "warm"
+    return "neutral"
 
 
 def describe_result(result: TurnResult) -> str:
@@ -43,10 +53,14 @@ def build_context(
     if story_so_far:
         parts.append("## The story so far (established; stay consistent with it)\n" + story_so_far)
 
+    def _describe_npc(n: NpcView) -> str:
+        if not n.alive:
+            return f"{n.name or n.id} (dead)"
+        mood = _attitude(effective_disposition(n, state.faction_rep))
+        return f"{n.name or n.id} ({mood} toward you)"
+
     if state.npcs:
-        who = ", ".join(
-            f"{n.name or n.id} ({'alive' if n.alive else 'dead'})" for n in state.npcs.values()
-        )
+        who = ", ".join(_describe_npc(n) for n in state.npcs.values())
         present = (
             "## Who is physically present (the ONLY characters in the scene)\n" + who + "\n"
             "No one else is here. Do NOT bring other named characters into the scene."

@@ -13,6 +13,7 @@ from halflight.api.schemas import (
     ChargenResult,
     ClassOut,
     ExitBrief,
+    FactionStanding,
     ItemBrief,
     LocationBrief,
     NpcBrief,
@@ -22,10 +23,11 @@ from halflight.api.schemas import (
     StepOut,
 )
 from halflight.engine.dice import Dice
+from halflight.engine.gamestate import effective_disposition
 from halflight.engine.lifepath import CLASSES, STEPS, resolve_build
 from halflight.engine.state import load_state
 from halflight.engine.turn import start_run
-from halflight.models import Item, Location, Npc, Run
+from halflight.models import Faction, Item, Location, Npc, Run
 
 router = APIRouter()
 
@@ -123,11 +125,17 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
         ],
         npcs=[
             NpcBrief(
-                id=n.id, name=_name(session, Npc, n.id), alive=n.alive, disposition=n.disposition
+                id=n.id, name=_name(session, Npc, n.id), alive=n.alive,
+                disposition=effective_disposition(n, state.faction_rep),
             )
             for n in state.npcs.values()
         ],
         inventory=inventory,
+        standing=[
+            FactionStanding(id=fid, name=_name(session, Faction, fid), rep=rep)
+            for fid, rep in sorted(state.faction_rep.items())
+            if rep != 0
+        ],
     )
 
 

@@ -63,3 +63,9 @@ class GameState:
     location: LocationView  # the player's current location
     npcs: dict[str, NpcView] = field(default_factory=dict)  # npcs in the current scene
     items: dict[str, ItemView] = field(default_factory=dict)  # catalog for referenced items
+    faction_rep: dict[str, int] = field(default_factory=dict)  # faction_id -> standing
+
+
+def effective_disposition(npc: NpcView, faction_rep: dict[str, int]) -> int:
+    """An NPC's attitude = their personal disposition plus your standing with their faction."""
+    return npc.disposition + (faction_rep.get(npc.faction_id, 0) if npc.faction_id else 0)

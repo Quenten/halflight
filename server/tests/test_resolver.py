@@ -76,6 +76,17 @@ def test_attack_miss_then_lethal_retaliation() -> None:
     assert any(c.entity == "player" and c.field == "hp" and c.delta < 0 for c in res.state_changes)
 
 
+def test_attack_costs_faction_standing() -> None:
+    state = make_state()
+    state.npcs["npc_thug"].faction_id = "fac_x"
+    state.npcs["npc_thug"].hp = 3
+    res = resolve(state, Attack(target="npc_thug", method="itm_shiv"), SeqRoller([20]))  # kills
+    assert any(
+        c.entity == "faction:fac_x" and c.field == "rep" and c.delta == -3
+        for c in res.state_changes
+    )
+
+
 def test_attack_absent_target_invalid() -> None:
     res = resolve(make_state(), Attack(target="npc_ghost"), SeqRoller([20]))
     assert not res.valid and res.outcome == "invalid"

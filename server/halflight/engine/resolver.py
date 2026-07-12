@@ -112,6 +112,12 @@ def _resolve_attack(state: GameState, action: Attack, dice: Roller) -> TurnResul
             significance = 2
         else:
             events.append(SceneEvent(kind="attack_hit", detail={"npc": npc.id, "damage": dmg}))
+        # Violence against one of a faction's own costs you standing with all of them.
+        if npc.faction_id:
+            rep_hit = -3 if npc_hp <= 0 else -1
+            changes.append(
+                StateChange(entity=f"faction:{npc.faction_id}", field="rep", delta=rep_hit)
+            )
         outcome = "success"
     else:
         events.append(SceneEvent(kind="attack_miss", detail={"npc": npc.id}))

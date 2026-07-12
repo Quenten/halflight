@@ -35,7 +35,13 @@ class NpcBrief(BaseModel):
     id: str
     name: str
     alive: bool
-    disposition: int
+    disposition: int  # effective: personal + faction standing
+
+
+class FactionStanding(BaseModel):
+    id: str
+    name: str
+    rep: int
 
 
 class ExitBrief(BaseModel):
@@ -107,6 +113,7 @@ class StateResponse(BaseModel):
     exits: list[ExitBrief]
     npcs: list[NpcBrief]
     inventory: list[ItemBrief]
+    standing: list[FactionStanding]
 
 
 class ChargenResult(BaseModel):
