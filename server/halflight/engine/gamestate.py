@@ -54,6 +54,7 @@ class LocationView:
 class ItemView:
     id: str
     kind: str
+    name: str = ""
     value: int = 0
     effects: dict[str, Any] = field(default_factory=dict)
 

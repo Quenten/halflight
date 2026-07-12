@@ -31,11 +31,12 @@ _TALK = re.compile(
     r"hail|answer|reply|chat|whisper|demand|beg|threaten)\b",
     re.IGNORECASE,
 )
-# Violence at a present NPC is an attack, whatever the model guessed.
+# Violence at a present NPC is an attack, whatever the model guessed. Stems with \w*
+# catch inflections (attack/attacks/attacking/attacked, shoot/shooting, ...).
 _VIOLENCE = re.compile(
-    r"\b(attack|attacks|kill|kills|shoot|shoots|gun|stab|stabs|knife|knifes|hit|hits|"
-    r"strike|strikes|punch|punches|beat|beats|slug|club|maul|choke|gut|murder|"
-    r"fight|fire on|open fire|swing at|lunge at|jump)\b",
+    r"\b(attack\w*|kill\w*|murder\w*|shoot\w*|shot|stab\w*|knif\w*|punch\w*|hit\w*|"
+    r"strik\w*|struck|beat\w*|slug\w*|club\w*|maul\w*|chok\w*|fight\w*|fought|"
+    r"swing\w*|lung\w*|smash\w*|jump\s+\w+|gun\s+\w+\s+down|gun\s+down|open\s+fire|fire\s+on)\b",
     re.IGNORECASE,
 )
 
@@ -89,10 +90,14 @@ def _coerce(raw: str) -> Action | None:
 
 def _present_npc(text: str, state: GameState) -> str | None:
     low = text.lower()
-    for n in state.npcs.values():
+    alive = [n for n in state.npcs.values() if n.alive]
+    for n in alive:
         short = n.id.split("_", 1)[-1]  # npc_dax -> dax
         if short in low or n.id in low or (n.name and n.name.lower() in low):
             return n.id
+    # "keep attacking", "hit him" — no name, but only one person is here.
+    if len(alive) == 1:
+        return alive[0].id
     return None
 
 

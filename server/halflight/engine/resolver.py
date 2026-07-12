@@ -47,10 +47,24 @@ def _invalid(action: Action, reason: str) -> TurnResult:
 
 
 def _weapon_base(state: GameState, method: str | None) -> int:
-    if method and method in state.items:
-        dmg = state.items[method].effects.get("damage")
-        if isinstance(dmg, int):
-            return dmg
+    owned = [
+        state.items[i]
+        for i in state.player.inventory
+        if i in state.items and state.items[i].kind == "weapon"
+    ]
+    # A named method that matches a carried weapon (by id or display name) wins.
+    if method:
+        m = method.lower()
+        for w in owned:
+            short = w.id.split("_", 1)[-1]
+            if short in m or (w.name and w.name.lower() in m):
+                dmg = w.effects.get("damage")
+                if isinstance(dmg, int):
+                    return dmg
+    # Otherwise you reach for your best weapon.
+    dmgs = [int(w.effects["damage"]) for w in owned if isinstance(w.effects.get("damage"), int)]
+    if dmgs:
+        return max(dmgs)
     return UNARMED_DAMAGE
 
 

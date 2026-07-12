@@ -91,6 +91,13 @@ def test_talk_wins_over_stray_travel_word() -> None:
     assert isinstance(action, Talk) and action.target == "npc_dax"
 
 
+def test_attacking_inflection_hits_sole_npc() -> None:
+    # "keep attacking" — no name, "attack" inflected; the one person here takes it.
+    client = FakeClient(['{"kind": "investigate", "target": null}'])
+    action = parse_intent("I keep attacking", make_state(), client, system="SYS")
+    assert isinstance(action, Attack) and action.target == "npc_dax"
+
+
 def test_violence_about_someone_is_not_forced() -> None:
     # A question mentioning violence shouldn't become an attack.
     client = FakeClient(['{"kind": "talk", "target": "npc_dax"}'])

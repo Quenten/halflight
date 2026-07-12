@@ -23,7 +23,7 @@ def make_state(*, player_hp: int = 20, credits: int = 0) -> GameState:
             hp=player_hp,
             location_id="loc_a",
             stats={},
-            inventory={"itm_medkit": 1},
+            inventory={"itm_shiv": 1, "itm_medkit": 1},
             credits=credits,
         ),
         location=LocationView(id="loc_a", connections=["loc_b"]),
@@ -90,6 +90,17 @@ def test_attack_costs_faction_standing() -> None:
 def test_attack_absent_target_invalid() -> None:
     res = resolve(make_state(), Attack(target="npc_ghost"), SeqRoller([20]))
     assert not res.valid and res.outcome == "invalid"
+
+
+def test_uses_best_owned_weapon() -> None:
+    state = make_state()
+    state.player.inventory["itm_maul"] = 1
+    state.items["itm_maul"] = ItemView(id="itm_maul", kind="weapon", value=200,
+                                        effects={"damage": 9})
+    state.npcs["npc_thug"].hp = 30
+    res = resolve(state, Attack(target="npc_thug"), SeqRoller([20, 1]))  # no method -> best weapon
+    hit = next(e for e in res.scene_events if e.kind == "attack_hit")
+    assert hit.detail["damage"] == 9 + (20 - 10) // 2  # maul base 9 + margin
 
 
 def test_attack_raises_heat() -> None:

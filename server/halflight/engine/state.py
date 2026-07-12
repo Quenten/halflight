@@ -61,7 +61,8 @@ def load_state(session: Session, run_id: int) -> GameState:
         )
 
     items = {
-        it.id: ItemView(id=it.id, kind=it.kind, value=it.value, effects=dict(it.effects))
+        it.id: ItemView(id=it.id, kind=it.kind, name=it.name, value=it.value,
+                        effects=dict(it.effects))
         for it in session.exec(select(Item)).all()
     }
 

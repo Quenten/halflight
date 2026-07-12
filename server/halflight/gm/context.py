@@ -50,6 +50,17 @@ def build_context(
         f"## Your state\nHP {p.hp} · Scrip {p.credits} · Time {p.time_ticks} · Heat {p.heat}",
         f"## Where you are\nThe scene takes place at: {loc}. The narration stays here.",
     ]
+    if p.inventory:
+        carried = ", ".join(
+            (state.items[iid].name if iid in state.items else iid) + (f" x{q}" if q > 1 else "")
+            for iid, q in p.inventory.items()
+        )
+        parts.append(
+            "## What you are carrying (you HAVE these — never say you lack them)\n" + carried
+        )
+    else:
+        parts.append("## What you are carrying\nNothing but the clothes you're in.")
+
     if p.heat >= 8:
         parts.append(
             "## The Watch\nYour heat is high. Watch Command is actively hunting you — patrols,"
