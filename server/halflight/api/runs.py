@@ -68,6 +68,7 @@ def create_run_chargen(req: ChargenRequest, session: SessionDep) -> ChargenResul
         build = resolve_build(req.class_id, req.choices, Dice())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    origin = " ".join(b.text.strip() for b in build.backstory if b.text.strip())
     run_id = start_run(
         session,
         character_name=req.character_name,
@@ -77,6 +78,7 @@ def create_run_chargen(req: ChargenRequest, session: SessionDep) -> ChargenResul
         archetype=req.class_id,
         credits=build.credits,
         inventory=build.inventory,
+        origin=origin,
     )
     backstory = [
         BuildStepOut(
@@ -115,6 +117,7 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
     return StateResponse(
         run_id=run_id,
         character_name=run.character_name,
+        origin=run.origin,
         hp=state.player.hp,
         hp_max=state.player.hp_max,
         credits=state.player.credits,

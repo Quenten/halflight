@@ -45,6 +45,7 @@ def build_context(
     npc_memories: dict[str, list[str]] | None = None,
     story_so_far: str | None = None,
     place_lore: list[str] | None = None,
+    origin: str | None = None,
 ) -> str:
     p = state.player
     loc = state.location.name or state.location.id
@@ -79,6 +80,11 @@ def build_context(
         parts.append(
             "## The Watch\nYou've drawn attention. There's a wariness in the air — the Watch is"
             " asking questions about you. Keep it subtle."
+        )
+    if origin:
+        parts.append(
+            "## Who you are (the character's past — do NOT recap it; let it quietly color "
+            "their manner, what they notice, and how people might know them)\n" + origin
         )
     if story_so_far:
         parts.append("## The story so far (established; stay consistent with it)\n" + story_so_far)

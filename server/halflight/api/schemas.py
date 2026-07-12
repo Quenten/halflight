@@ -102,6 +102,7 @@ class BuildStepOut(BaseModel):
 class StateResponse(BaseModel):
     run_id: int
     character_name: str
+    origin: str
     hp: int
     hp_max: int
     credits: int

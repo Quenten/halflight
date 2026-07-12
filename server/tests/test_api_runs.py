@@ -105,6 +105,9 @@ def test_create_run_via_chargen(
     assert out["state"]["character_name"] == "Vex"
     assert out["state"]["stats"]["streetwise"] >= 15  # fixer 15 + sump upbringing +1
     assert len(out["backstory"]) == 4
+    # The backstory is distilled into a persisted origin blurb, shown on the sheet.
+    assert out["state"]["origin"]
+    assert len(out["state"]["origin"]) > 20
 
 
 def test_chargen_unknown_class_400(client: TestClient) -> None:

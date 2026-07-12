@@ -78,6 +78,7 @@
   .sheet-col { flex: 1; min-width: 190px; }
   .sheet-col h3 { color: var(--cyan); font-size: 12px; letter-spacing: .2em; margin: 0 0 .5rem; }
   .sub { color: var(--dim); font-size: 11px; letter-spacing: .15em; margin: .6rem 0 .2rem; }
+  .origin { color: var(--fg); font-size: 12px; line-height: 1.5; }
   .row { display: flex; justify-content: space-between; gap: 1rem; padding: .1rem 0; }
   .row .k { color: var(--ink); } .row .v { color: var(--dim); }
   .row .v.neg { color: var(--blood); } .row .v.pos { color: var(--ok); }
@@ -121,7 +122,10 @@
       <h3 style="margin-top:1rem">STATS</h3><div id="sheet-stats"></div>
     </div>
     <div class="sheet-col"><h3>SURROUNDINGS</h3><div id="sheet-here"></div></div>
-    <div class="sheet-col"><h3>INVENTORY</h3><div id="sheet-inv"></div></div>
+    <div class="sheet-col">
+      <h3>INVENTORY</h3><div id="sheet-inv"></div>
+      <h3 style="margin-top:1rem">ORIGIN</h3><div id="sheet-origin"></div>
+    </div>
   </section>
 
   <main id="log"></main>
@@ -275,6 +279,8 @@ function renderState(s) {
 
   const inv = (s.inventory||[]).map(i => row(i.name + (i.quantity>1 ? ' ×'+i.quantity : ''), i.kind)).join('');
   document.getElementById('sheet-inv').innerHTML = inv || '<div class="empty">empty</div>';
+  document.getElementById('sheet-origin').innerHTML =
+    s.origin ? '<div class="origin">' + s.origin + '</div>' : '<div class="empty">unknown</div>';
 
   if (s.ended) {
     el('dead', '— ' + (s.cause_of_death || 'you died') + ' —');

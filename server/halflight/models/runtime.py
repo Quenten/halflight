@@ -35,6 +35,7 @@ class Run(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     character_name: str
     archetype: str = ""
+    origin: str = Field(default="", sa_column=Column(Text, nullable=False, server_default=""))
     started_at: datetime = Field(sa_column=_ts_col(nullable=False))
     ended_at: datetime | None = Field(default=None, sa_column=_ts_col(nullable=True))
     cause_of_death: str | None = None

@@ -91,7 +91,9 @@ def turn(
         npc_mems = scene_npc_memories(session, req.run_id, [n.id for n in post.npcs.values()])
         story = format_summary(latest_summary(session, req.run_id))
         here = location_lore(session, post.location.id)
-        context = build_context(post, result, retrieved, req.text, npc_mems, story, here)
+        context = build_context(
+            post, result, retrieved, req.text, npc_mems, story, here, origin=run.origin
+        )
         turn_no = current_turn_no(session, req.run_id)
         record_event_memory(
             session, embedder, run_id=req.run_id, turn_no=turn_no,

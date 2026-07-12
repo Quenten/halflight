@@ -30,9 +30,12 @@ def start_run(
     archetype: str = "",
     credits: int = 0,
     inventory: dict[str, int] | None = None,
+    origin: str = "",
 ) -> int:
     """Create a run: player state, starting inventory, and npc_state for every NPC."""
-    run = Run(character_name=character_name, archetype=archetype, started_at=utcnow())
+    run = Run(
+        character_name=character_name, archetype=archetype, origin=origin, started_at=utcnow()
+    )
     session.add(run)
     session.flush()  # populate run.id
     assert run.id is not None
