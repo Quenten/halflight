@@ -90,6 +90,16 @@
   .narr { color: var(--ink); margin: .3rem 0 1rem; }
   .correction { color: var(--blood); font-style: italic; }
   .dead { color: var(--blood); font-weight: 700; }
+  .death-card { border: 1px solid var(--blood); border-radius: 4px; padding: 1rem 1.2rem;
+    margin: 1rem 0; text-align: center; background: rgba(180,40,40,.06); }
+  .death-card .dead { font-size: 15px; letter-spacing: .1em; margin-bottom: .5rem; }
+  .death-sub { color: var(--fg); font-size: 13px; margin-bottom: .4rem; }
+  .death-standing { color: var(--dim); font-size: 12px; margin-bottom: .8rem; }
+  .death-standing .v { margin: 0 .3rem; }
+  #reborn { background: var(--blood); color: #fff; border: none; border-radius: 3px;
+    padding: .5rem 1.4rem; font-family: inherit; font-size: 12px; letter-spacing: .1em;
+    cursor: pointer; }
+  #reborn:hover { filter: brightness(1.15); }
   .thinking { color: var(--dim); font-style: italic; }
   footer { border-top: 1px solid var(--edge); background: var(--panel); padding: .5rem .9rem; }
   form { display: flex; gap: .6rem; max-width: 820px; margin: 0 auto; }
@@ -282,11 +292,25 @@ function renderState(s) {
   document.getElementById('sheet-origin').innerHTML =
     s.origin ? '<div class="origin">' + s.origin + '</div>' : '<div class="empty">unknown</div>';
 
-  if (s.ended) {
-    el('dead', '— ' + (s.cause_of_death || 'you died') + ' —');
-    setEnabled(false); runId = null; localStorage.removeItem('hl_run');
-    setTimeout(openCreator, 500);
-  }
+  if (s.ended) showDeath(s);
+}
+
+function showDeath(s) {
+  setEnabled(false); runId = null; localStorage.removeItem('hl_run');
+  if (document.getElementById('death-card')) return;  // only once
+  const standing = (s.standing || [])
+    .map(f => `<span class="v ${f.rep<0?'neg':(f.rep>0?'pos':'')}">${esc(f.name)} ${f.rep>0?'+':''}${f.rep}</span>`)
+    .join('');
+  const card = el('death-card');
+  card.id = 'death-card';
+  card.innerHTML =
+    '<div class="dead">— ' + esc(s.cause_of_death || 'you died') + ' —</div>' +
+    '<div class="death-sub">' + esc(s.character_name || 'You') +
+      ' lasted ' + (s.time_ticks || 0) + ' turns, and fell in ' +
+      esc(s.location_name || s.location_id || 'the dark') + '.</div>' +
+    (standing ? '<div class="death-standing">They will remember: ' + standing + '</div>' : '') +
+    '<button id="reborn">begin again</button>';
+  document.getElementById('reborn').addEventListener('click', openCreator);
 }
 
 function setEnabled(on) { input.disabled = !on; sendBtn.disabled = !on; if (on) input.focus(); }
