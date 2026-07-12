@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from halflight.gm.retrieval import retrieve
+from halflight.gm.retrieval import location_lore, retrieve
 from halflight.ingest.runner import run_ingest
 from sqlmodel import Session
 
@@ -20,6 +20,15 @@ def test_retrieve_returns_chunks(session: Session, fake_embedder: FakeEmbedder) 
     assert len(results) <= 3
     # ordered by ascending distance
     assert results == sorted(results, key=lambda r: r.distance)
+
+
+def test_location_lore_returns_own_visible_chunks(
+    session: Session, fake_embedder: FakeEmbedder
+) -> None:
+    run_ingest(FIXTURE, session, fake_embedder)
+    chunks = location_lore(session, "loc_tram_hub")
+    assert chunks and any("concourse" in c for c in chunks)
+    assert all("maintenance shaft" not in c for c in chunks)  # secret stays hidden
 
 
 def test_secret_chunks_excluded(session: Session, fake_embedder: FakeEmbedder) -> None:

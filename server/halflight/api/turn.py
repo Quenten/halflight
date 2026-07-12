@@ -30,7 +30,7 @@ from halflight.gm.memory import record_event_memory, scene_npc_memories
 from halflight.gm.narrator import check_consistency, factual_fallback, strip_thinking, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
-from halflight.gm.retrieval import retrieve
+from halflight.gm.retrieval import location_lore, retrieve
 from halflight.gm.secrets import maybe_reveal_on_investigate
 from halflight.gm.summary import format_summary, latest_summary, maybe_summarize
 from halflight.gm.turnlog import log_turn
@@ -69,7 +69,8 @@ def turn(
         retrieved = retrieve(req.text, embedder, session, k=6, run_id=req.run_id)
         npc_mems = scene_npc_memories(session, req.run_id, [n.id for n in post.npcs.values()])
         story = format_summary(latest_summary(session, req.run_id))
-        context = build_context(post, result, retrieved, req.text, npc_mems, story)
+        here = location_lore(session, post.location.id)
+        context = build_context(post, result, retrieved, req.text, npc_mems, story, here)
         turn_no = current_turn_no(session, req.run_id)
         record_event_memory(
             session, embedder, run_id=req.run_id, turn_no=turn_no,

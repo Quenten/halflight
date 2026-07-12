@@ -24,7 +24,7 @@ from halflight.gm.memory import record_event_memory, scene_npc_memories
 from halflight.gm.narrator import narrate, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
-from halflight.gm.retrieval import retrieve
+from halflight.gm.retrieval import location_lore, retrieve
 from halflight.gm.secrets import maybe_reveal_on_investigate
 from halflight.gm.summary import format_summary, latest_summary, maybe_summarize
 from halflight.gm.turnlog import log_turn
@@ -69,7 +69,8 @@ def play_turn(
     retrieved = retrieve(text, embedder, session, k=6, run_id=run_id)
     npc_mems = scene_npc_memories(session, run_id, [n.id for n in post.npcs.values()])
     story = format_summary(latest_summary(session, run_id))
-    context = build_context(post, result, retrieved, text, npc_mems, story)
+    here = location_lore(session, post.location.id)
+    context = build_context(post, result, retrieved, text, npc_mems, story, here)
     narration = narrate(chat, system=system_prompt(vault_path), context=context, result=result)
 
     turn_no = current_turn_no(session, run_id)

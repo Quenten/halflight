@@ -43,6 +43,7 @@ def build_context(
     player_text: str,
     npc_memories: dict[str, list[str]] | None = None,
     story_so_far: str | None = None,
+    place_lore: list[str] | None = None,
 ) -> str:
     p = state.player
     loc = state.location.name or state.location.id
@@ -50,6 +51,11 @@ def build_context(
         f"## Your state\nHP {p.hp} · Scrip {p.credits} · Time {p.time_ticks} · Heat {p.heat}",
         f"## Where you are\nThe scene takes place at: {loc}. The narration stays here.",
     ]
+    if place_lore:
+        parts.append(
+            "## This place (the actual current location — ground the scene in THIS, not "
+            "elsewhere)\n" + "\n".join(place_lore)
+        )
     if p.inventory:
         carried = ", ".join(
             (state.items[iid].name if iid in state.items else iid) + (f" x{q}" if q > 1 else "")

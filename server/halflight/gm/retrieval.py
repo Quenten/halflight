@@ -70,6 +70,17 @@ def _event_candidates(
     return out
 
 
+def location_lore(session: Session, location_id: str) -> list[str]:
+    """The current location's own (non-secret, revealed) description chunks."""
+    rows = session.exec(
+        select(LoreChunk)
+        .where(col(LoreChunk.source_note_id) == location_id)
+        .where(or_(col(LoreChunk.is_secret).is_(False), col(LoreChunk.revealed).is_(True)))
+        .order_by(col(LoreChunk.chunk_ix))
+    ).all()
+    return [c.body for c in rows]
+
+
 def retrieve(
     query: str,
     embedder: Embedder,
