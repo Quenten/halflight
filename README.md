@@ -38,16 +38,26 @@ curl http://localhost:8000/healthz    # -> {"status":"ok"}
 ## Play
 
 Open `http://localhost:8000/` in a browser. Requires a world in the DB and both
-model servers running (see below). Ingest a world first, then click **new game**
-with a valid start-location id.
+model servers running (see below). Ingest a world first, then build a character in
+the creator: pick a class and a lifepath (upbringing / how you were marked / who
+you ran with / your last job), which rolls your stats, gear, starting location, and
+an origin the narrator remembers. Runs are kept in `localStorage`; a reload resumes
+the last one and replays its story log.
 
 ```powershell
 # ingest a playable world (the test fixture works; or your own vault once authored)
 uv run python -m halflight.ingest server/tests/fixtures/vault_mini
 ```
 
-Endpoints: `POST /runs` (start), `GET /state?run_id=`, `POST /turn` (SSE narration),
-`POST /admin/ingest`. Every turn is logged to `logs/turns/{run_id}/{turn_no}.json`.
+Endpoints: `GET /chargen` + `POST /runs/chargen` (character creator), `POST /runs`
+(raw start), `GET /state?run_id=`, `GET /history?run_id=` (past turns), `POST /turn`
+(SSE narration), `POST /admin/ingest`. Every turn is also logged to
+`logs/turns/{run_id}/{turn_no}.json`.
+
+The city runs on shifts (Highshift → Lowshift → Deadshift); the clock advances one
+tick per turn and deadshift is curfew. Violence raises **Heat** — the Watch's
+attention — which decays as you lie low. Kill or rob a faction's people and your
+standing with all of them drops, and NPCs remember and gossip about what they saw.
 
 ## Vault ingestion
 
