@@ -35,6 +35,7 @@ def test_positive_rolls_help() -> None:
     assert b.credits > 40  # base 40 + positive scrip
     assert len(b.backstory) == 4
     assert all(step.outcome_kind in ("chosen", "positive") for step in b.backstory)
+    assert b.start_location == "loc_walker_bay"  # last_job "salvage" sets where you end up
 
 
 def test_negative_rolls_hurt_but_hp_clamped() -> None:

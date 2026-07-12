@@ -216,8 +216,8 @@ function renderRecap(result) {
       <div class="cg-recap-sum ${cls}">${esc(b.summary)}</div></div>`;
   }
   const order = ['muscle','nerve','wits','tech','streetwise','presence'];
-  h += `<div class="cg-final">HP ${s.hp} · ${s.credits} scrip · ` +
-    order.map(k => `${k} ${s.stats[k]}`).join(' · ') + '</div>';
+  h += `<div class="cg-final">You end up in <b style="color:var(--amber)">${esc(s.location_name || s.location_id)}</b>.<br>` +
+    `HP ${s.hp} · ${s.credits} scrip · ` + order.map(k => `${k} ${s.stats[k]}`).join(' · ') + '</div>';
   h += '<button id="cg-begin">enter the halflight</button>';
   cgBody.innerHTML = h;
   document.getElementById('cg-begin').addEventListener('click', () => enterGame(s));

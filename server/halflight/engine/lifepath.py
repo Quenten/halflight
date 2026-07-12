@@ -37,6 +37,7 @@ class Option:
     hint: str = ""
     base: Effect = field(default_factory=Effect)
     outcomes: list[Outcome] = field(default_factory=list)
+    start_location: str | None = None  # where this choice leaves you (last-job step)
 
 
 @dataclass
@@ -169,22 +170,26 @@ STEPS: list[Step] = [
     Step(
         id="last_job", title="THE LAST JOB", prompt="What was the last job before you ended up here?", rolls=True,
         options=[
-            Option("salvage", "A salvage run past the Seam", "The score to set you up.", "±wits", outcomes=[
+            Option("salvage", "A salvage run past the Seam", "The score to set you up.", "±wits",
+                   start_location="loc_walker_bay", outcomes=[
                 _pos("You came back with something the Dredge would kill for, and the scrip to match.", wits=1, cr=80),
                 _neu("You came back. Half the crew didn't. The haul barely covered the loss.", wits=1),
                 _neg("The Reach took the haul and two fingers. You limped back with nothing.", wits=-1, hp=-6, cr=-20),
             ]),
-            Option("protection", "A protection job", "Someone needed you. You showed up.", "±nerve ±muscle", outcomes=[
+            Option("protection", "A protection job", "Someone needed you. You showed up.", "±nerve ±muscle",
+                   start_location="loc_ashwell", outcomes=[
                 _pos("You kept them alive and they paid what they promised. Rare, that.", nerve=1, muscle=1, cr=40),
                 _neu("You held the line. It cost more than it paid, but you held it.", nerve=1),
                 _neg("They died on your watch. You carry that, and the debt that came with it.", muscle=-1, hp=-6),
             ]),
-            Option("double_cross", "A double-cross", "You sold out the people who trusted you.", "±presence", outcomes=[
+            Option("double_cross", "A double-cross", "You sold out the people who trusted you.", "±presence",
+                   start_location="loc_drip_market", outcomes=[
                 _pos("The betrayal paid clean and no one traced it back. Your conscience is negotiable.", presence=1, cr=70),
                 _neu("You got out with the scrip and a name people spit. Worth it, mostly.", cr=30, presence=-1),
                 _neg("They found out. You barely made the Undervault ahead of them.", presence=-1, hp=-4, cr=-10),
             ]),
-            Option("runner", "A runner", "You ran from everything you'd built.", "±nerve", outcomes=[
+            Option("runner", "A runner", "You ran from everything you'd built.", "±nerve",
+                   start_location="loc_saltgate", outcomes=[
                 _pos("You got out clean and early, and took a stake with you. Smart.", nerve=1, cr=40),
                 _neu("You ran. You're here. That's all that matters now.", nerve=1),
                 _neg("You ran with nothing but the debt, and it followed you down.", nerve=-1, cr=-30),
@@ -251,12 +256,15 @@ def resolve_build(class_id: str, choices: dict[str, str], dice: Roller) -> Build
     hp, credits = cls.hp, cls.credits
     stats = dict(cls.stats)
     inventory = {item: 1 for item in cls.items}
+    start_location = DEFAULT_START
     backstory: list[BuildStep] = []
 
     for step in STEPS:
         opt = next((o for o in step.options if o.id == choices.get(step.id)), None)
         if opt is None:
             continue
+        if opt.start_location:
+            start_location = opt.start_location
         if step.rolls and opt.outcomes:
             outcome = _roll(opt.outcomes, dice)
             hp, credits = _apply(outcome.effect, hp, credits, stats)
@@ -272,5 +280,5 @@ def resolve_build(class_id: str, choices: dict[str, str], dice: Roller) -> Build
 
     return Build(
         hp=max(1, hp), credits=max(0, credits), stats=stats, inventory=inventory,
-        start_location=DEFAULT_START, backstory=backstory,
+        start_location=start_location, backstory=backstory,
     )
