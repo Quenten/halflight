@@ -25,7 +25,7 @@ from halflight.config import get_settings
 from halflight.engine.state import load_state
 from halflight.engine.turn import current_turn_no, take_turn
 from halflight.gm.context import build_context
-from halflight.gm.memory import record_event_memory
+from halflight.gm.memory import record_event_memory, scene_npc_memories
 from halflight.gm.narrator import check_consistency, factual_fallback, strip_thinking, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
@@ -59,7 +59,10 @@ def turn(
     try:
         action = parse_intent(req.text, state, chat, system=parse_system)
         result = take_turn(session, req.run_id, action, None)
+        # Retrieval + NPC memories reflect the state before this turn's event is recorded.
         retrieved = retrieve(req.text, embedder, session, k=6, run_id=req.run_id)
+        npc_mems = scene_npc_memories(session, req.run_id, [n.id for n in state.npcs.values()])
+        context = build_context(state, result, retrieved, req.text, npc_mems)
         record_event_memory(
             session, embedder, run_id=req.run_id, turn_no=current_turn_no(session, req.run_id),
             result=result, actor=run.character_name,
@@ -70,7 +73,6 @@ def turn(
             status_code=503,
             detail="model server unreachable — is llama-server running? (see README)",
         ) from exc
-    context = build_context(state, result, retrieved, req.text)
     narrate_system = system_prompt(vault)
     parse_prompt_text = build_prompt(parse_system, state, req.text)
     snap = snapshot(session, req.run_id).model_dump()

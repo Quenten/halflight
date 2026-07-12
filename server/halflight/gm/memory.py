@@ -8,14 +8,17 @@ deterministically from the TurnResult; no LLM.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from sqlmodel import Session, col, select
 
 from halflight.engine.results import TurnResult
 from halflight.ingest.embedder import Embedder
-from halflight.models import Event, EventChunk, Npc
+from halflight.models import Event, EventChunk, Npc, NpcMemory
 from halflight.models.runtime import utcnow
 
 SIGNIFICANCE_THRESHOLD = 2
+MEMORIES_PER_NPC = 3
 
 
 def _npc_name(session: Session, npc_id: str | None) -> str:
@@ -71,5 +74,39 @@ def record_event_memory(
             ts=utcnow(),
         )
     )
+
+    # Every alive NPC who was in the scene witnesses it (the victim, being dead, does not).
+    victims = {e.detail.get("npc") for e in result.scene_events if e.kind == "npc_died"}
+    now = utcnow()
+    for npc_id in event.witnesses:
+        if npc_id in victims:
+            continue
+        session.add(
+            NpcMemory(
+                run_id=run_id, npc_id=npc_id, event_id=event.id, how_known="witnessed", ts=now
+            )
+        )
+
     session.commit()
     return description
+
+
+def scene_npc_memories(
+    session: Session, run_id: int, npc_ids: Iterable[str]
+) -> dict[str, list[str]]:
+    """Return, per present NPC, the event descriptions they know (most recent first)."""
+    ids = list(npc_ids)
+    if not ids:
+        return {}
+    rows = session.exec(
+        select(NpcMemory, EventChunk.description)
+        .join(EventChunk, col(EventChunk.event_id) == col(NpcMemory.event_id))
+        .where(col(NpcMemory.run_id) == run_id, col(NpcMemory.npc_id).in_(ids))
+        .order_by(col(NpcMemory.event_id).desc())
+    ).all()
+    out: dict[str, list[str]] = {}
+    for mem, description in rows:
+        bucket = out.setdefault(mem.npc_id, [])
+        if len(bucket) < MEMORIES_PER_NPC:
+            bucket.append(description)
+    return out

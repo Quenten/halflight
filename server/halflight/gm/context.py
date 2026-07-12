@@ -31,6 +31,7 @@ def build_context(
     result: TurnResult,
     retrieved: list[RetrievedChunk],
     player_text: str,
+    npc_memories: dict[str, list[str]] | None = None,
 ) -> str:
     p = state.player
     loc = state.location.name or state.location.id
@@ -53,6 +54,18 @@ def build_context(
             " any named character into the scene."
         )
     parts.append(present)
+
+    if npc_memories:
+        lines = [
+            f"- {n.name or n.id} remembers: " + " ".join(npc_memories[n.id])
+            for n in state.npcs.values()
+            if npc_memories.get(n.id)
+        ]
+        if lines:
+            parts.append(
+                "## What the people here remember about you (react in character to this)\n"
+                + "\n".join(lines)
+            )
 
     if retrieved:
         lore = "\n\n".join(f"- {c.body}" for c in retrieved)

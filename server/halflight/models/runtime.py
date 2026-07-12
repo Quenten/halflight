@@ -115,3 +115,16 @@ class EventChunk(SQLModel, table=True):
     description: str = Field(sa_column=Column(Text, nullable=False))
     embedding: Any | None = Field(default=None, sa_column=Column(Vector(EMBED_DIM), nullable=True))
     ts: datetime = Field(sa_column=_ts_col(nullable=False))
+
+
+class NpcMemory(SQLModel, table=True):
+    """What an NPC knows: an event they witnessed, were told, or is public (M6)."""
+
+    __tablename__ = "npc_memories"
+    __table_args__ = (Index("ix_npc_memories_lookup", "run_id", "npc_id"),)
+
+    run_id: int = Field(primary_key=True, foreign_key="runs.id")
+    npc_id: str = Field(primary_key=True)
+    event_id: int = Field(primary_key=True, foreign_key="events.id")
+    how_known: str = "witnessed"  # witnessed | told | public
+    ts: datetime = Field(sa_column=_ts_col(nullable=False))
