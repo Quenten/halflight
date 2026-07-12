@@ -21,6 +21,7 @@ class PlayerView:
     inventory: dict[str, int] = field(default_factory=dict)  # item_id -> qty
     credits: int = 0
     time_ticks: int = 0
+    heat: int = 0
 
     def stat(self, name: str) -> int:
         return self.stats.get(name, BASELINE_STAT)

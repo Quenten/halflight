@@ -47,9 +47,19 @@ def build_context(
     p = state.player
     loc = state.location.name or state.location.id
     parts: list[str] = [
-        f"## Your state\nHP {p.hp} · Scrip {p.credits} · Time {p.time_ticks}",
+        f"## Your state\nHP {p.hp} · Scrip {p.credits} · Time {p.time_ticks} · Heat {p.heat}",
         f"## Where you are\nThe scene takes place at: {loc}. The narration stays here.",
     ]
+    if p.heat >= 8:
+        parts.append(
+            "## The Watch\nYour heat is high. Watch Command is actively hunting you — patrols,"
+            " drones, informants. Let that pressure bleed into the scene; strangers watch too long."
+        )
+    elif p.heat >= 4:
+        parts.append(
+            "## The Watch\nYou've drawn attention. There's a wariness in the air — the Watch is"
+            " asking questions about you. Keep it subtle."
+        )
     if story_so_far:
         parts.append("## The story so far (established; stay consistent with it)\n" + story_so_far)
 

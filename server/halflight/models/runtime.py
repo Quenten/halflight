@@ -49,6 +49,7 @@ class PlayerState(SQLModel, table=True):
     location_id: str
     stats: dict[str, Any] = Field(default_factory=dict, sa_column=_jsonb())
     time_ticks: int = 0
+    heat: int = 0  # Watch/Combine attention; rises with witnessed violence, decays over time
 
 
 class Inventory(SQLModel, table=True):

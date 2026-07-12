@@ -77,6 +77,7 @@ def load_state(session: Session, run_id: int) -> GameState:
         inventory=inv,
         credits=ps.credits,
         time_ticks=ps.time_ticks,
+        heat=ps.heat,
     )
     return GameState(
         player=player, location=location, npcs=npcs, items=items, faction_rep=faction_rep
@@ -117,6 +118,8 @@ def _apply_player(session: Session, run_id: int, change: StateChange) -> None:
         ps.credits += int(change.delta)
     elif field == "time_ticks":
         ps.time_ticks += int(change.delta)
+    elif field == "heat":
+        ps.heat = max(0, ps.heat + int(change.delta))
     elif field.startswith("inventory:"):
         _adjust_inventory(session, run_id, field.split(":", 1)[1], int(change.delta))
         return

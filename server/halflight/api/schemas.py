@@ -107,6 +107,7 @@ class StateResponse(BaseModel):
     location_id: str
     location_name: str
     time_ticks: int
+    heat: int
     ended: bool
     cause_of_death: str | None
     stats: dict[str, int]

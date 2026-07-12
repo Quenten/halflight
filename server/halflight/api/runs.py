@@ -116,6 +116,7 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
         location_id=state.location.id,
         location_name=_name(session, Location, state.location.id),
         time_ticks=state.player.time_ticks,
+        heat=state.player.heat,
         ended=run.ended_at is not None,
         cause_of_death=run.cause_of_death,
         stats=state.player.stats,

@@ -25,6 +25,8 @@
   .stat { color: var(--dim); }
   .stat b { color: var(--ink); font-weight: 600; }
   #hp.low b { color: var(--blood); }
+  #heat.hot b { color: var(--blood); }
+  #heat.warm b { color: var(--amber); }
   #loc { color: var(--cyan); }
   .spacer { margin-left: auto; }
   button {
@@ -107,6 +109,7 @@
     <span class="stat" id="hp">HP <b>—</b></span>
     <span class="stat">SCRIP <b id="scrip">—</b></span>
     <span class="stat">T<b id="time">—</b></span>
+    <span class="stat" id="heat">HEAT <b>—</b></span>
     <button id="sheetBtn" class="spacer">sheet</button>
     <button id="newBtn">new</button>
   </header>
@@ -238,9 +241,13 @@ function renderState(s) {
   hp.querySelector('b').textContent = s.hp; hp.classList.toggle('low', s.hp <= 5);
   document.getElementById('scrip').textContent = s.credits;
   document.getElementById('time').textContent = s.time_ticks;
+  const heat = document.getElementById('heat');
+  heat.querySelector('b').textContent = s.heat;
+  heat.classList.toggle('hot', s.heat >= 8);
+  heat.classList.toggle('warm', s.heat >= 4 && s.heat < 8);
 
   document.getElementById('sheet-status').innerHTML =
-    row('HP', s.hp) + row('Credits', s.credits + ' cr') +
+    row('HP', s.hp) + row('Credits', s.credits + ' cr') + row('Heat', s.heat) +
     row('Location', s.location_name || s.location_id) + row('Turn', s.time_ticks);
   const order = ['muscle','nerve','wits','tech','streetwise','presence'];
   const stats = s.stats || {};

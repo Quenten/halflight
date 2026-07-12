@@ -42,3 +42,19 @@ def test_attack_lowers_standing_and_attitude(
     assert state.faction_rep.get("fac_syndicate", 0) < 0
     dax = state.npcs["npc_dax"]
     assert effective_disposition(dax, state.faction_rep) < before_att
+    # Violence drew Watch attention (gain 2, minus 1 decay this turn).
+    assert state.player.heat >= 1
+
+
+def test_heat_decays_when_lying_low(session: Session, fake_embedder: FakeEmbedder) -> None:
+    from halflight.engine.actions import Move
+
+    run_ingest(FIXTURE, session, fake_embedder)
+    run_id = start_run(
+        session, character_name="Vex", start_location="loc_tram_hub", stats=STATS, hp=30
+    )
+    take_turn(session, run_id, Attack(target="npc_dax"), SeqRoller([15, 1]))
+    hot = load_state(session, run_id).player.heat
+    # A quiet turn cools it.
+    take_turn(session, run_id, Move(target="loc_underlevel"), SeqRoller([]))
+    assert load_state(session, run_id).player.heat < hot

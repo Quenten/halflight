@@ -92,6 +92,14 @@ def test_attack_absent_target_invalid() -> None:
     assert not res.valid and res.outcome == "invalid"
 
 
+def test_attack_raises_heat() -> None:
+    state = make_state()
+    state.npcs["npc_thug"].hp = 3
+    res = resolve(state, Attack(target="npc_thug", method="itm_shiv"), SeqRoller([20]))  # kill
+    heat = next(c.delta for c in res.state_changes if c.entity == "player" and c.field == "heat")
+    assert heat == 4  # kill base, no live witnesses in the scene
+
+
 def test_trade_buy_insufficient_and_success() -> None:
     poor = resolve(
         make_state(credits=10), Trade(target="npc_thug", item="itm_shiv", direction="buy"),

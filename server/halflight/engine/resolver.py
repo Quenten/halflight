@@ -118,6 +118,10 @@ def _resolve_attack(state: GameState, action: Attack, dice: Roller) -> TurnResul
             changes.append(
                 StateChange(entity=f"faction:{npc.faction_id}", field="rep", delta=rep_hit)
             )
+        # Heat: violence draws the Watch, more so when there are witnesses to talk.
+        witnesses = sum(1 for o in state.npcs.values() if o.alive and o.id != npc.id)
+        heat_gain = (4 if npc_hp <= 0 else 2) + min(witnesses, 3)
+        changes.append(StateChange(entity="player", field="heat", delta=heat_gain))
         outcome = "success"
     else:
         events.append(SceneEvent(kind="attack_miss", detail={"npc": npc.id}))
