@@ -19,6 +19,7 @@ from halflight.engine.actions import (
     Trade,
     UseItem,
 )
+from halflight.engine.clock import shift_for
 from halflight.engine.dice import Roller
 from halflight.engine.gamestate import BASELINE_STAT, GameState
 from halflight.engine.results import SceneEvent, StateChange, TurnResult
@@ -89,7 +90,6 @@ def _resolve_move(state: GameState, action: Move) -> TurnResult:
         outcome="success",
         state_changes=[
             StateChange(entity="player", field="location_id", delta=action.target),
-            StateChange(entity="player", field="time_ticks", delta=1),
         ],
         scene_events=[
             SceneEvent(kind="moved", detail={"from": state.location.id, "to": action.target})
@@ -147,6 +147,9 @@ def _resolve_attack(state: GameState, action: Attack, dice: Roller) -> TurnResul
         # Heat: violence draws the Watch, more so when there are witnesses to talk.
         witnesses = sum(1 for o in state.npcs.values() if o.alive and o.id != npc.id)
         heat_gain = (4 if npc_hp <= 0 else 2) + min(witnesses, 3)
+        # Deadshift curfew: near-empty decks mean a lone figure stands out to patrols.
+        if shift_for(state.player.time_ticks).curfew:
+            heat_gain += 1
         changes.append(StateChange(entity="player", field="heat", delta=heat_gain))
         outcome = "success"
     else:

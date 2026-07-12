@@ -69,11 +69,20 @@ def take_turn(
     state = load_state(session, run_id)
     result = resolve(state, action, dice)
     apply(session, run_id, result)
+    _advance_time(session, run_id)
     _decay_heat(session, run_id)
     _log_event(session, run_id, state, result)
     _end_run_if_dead(session, run_id, result)
     session.commit()
     return result
+
+
+def _advance_time(session: Session, run_id: int) -> None:
+    """Every turn is one tick of the city clock (see engine.clock)."""
+    ps = session.get(PlayerState, run_id)
+    if ps is not None:
+        ps.time_ticks += 1
+        session.add(ps)
 
 
 def _decay_heat(session: Session, run_id: int) -> None:

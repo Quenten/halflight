@@ -8,6 +8,7 @@ arrive in M6; this is the M4 bundle.
 
 from __future__ import annotations
 
+from halflight.engine.clock import shift_for
 from halflight.engine.gamestate import GameState, NpcView, effective_disposition
 from halflight.engine.results import TurnResult
 from halflight.gm.retrieval import RetrievedChunk
@@ -47,9 +48,11 @@ def build_context(
 ) -> str:
     p = state.player
     loc = state.location.name or state.location.id
+    shift = shift_for(p.time_ticks)
     parts: list[str] = [
-        f"## Your state\nHP {p.hp} · Scrip {p.credits} · Time {p.time_ticks} · Heat {p.heat}",
+        f"## Your state\nHP {p.hp} · Scrip {p.credits} · {shift.name} · Heat {p.heat}",
         f"## Where you are\nThe scene takes place at: {loc}. The narration stays here.",
+        f"## The hour ({shift.name} — the city runs on shifts, not day and night)\n{shift.mood}",
     ]
     if place_lore:
         parts.append(

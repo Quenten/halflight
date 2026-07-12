@@ -22,6 +22,7 @@ from halflight.api.schemas import (
     StateResponse,
     StepOut,
 )
+from halflight.engine.clock import shift_for
 from halflight.engine.dice import Dice
 from halflight.engine.gamestate import effective_disposition
 from halflight.engine.lifepath import CLASSES, STEPS, resolve_build
@@ -95,6 +96,7 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
     if run is None:
         raise HTTPException(status_code=404, detail=f"no run {run_id}")
     state = load_state(session, run_id)
+    shift = shift_for(state.player.time_ticks)
 
     inventory = []
     for item_id, qty in state.player.inventory.items():
@@ -117,6 +119,8 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
         location_id=state.location.id,
         location_name=_name(session, Location, state.location.id),
         time_ticks=state.player.time_ticks,
+        shift=shift.name,
+        curfew=shift.curfew,
         heat=state.player.heat,
         ended=run.ended_at is not None,
         cause_of_death=run.cause_of_death,
