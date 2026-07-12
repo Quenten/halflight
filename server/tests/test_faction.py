@@ -46,6 +46,32 @@ def test_attack_lowers_standing_and_attitude(
     assert state.player.heat >= 1
 
 
+def test_healing_caps_at_hp_max(session: Session, fake_embedder: FakeEmbedder) -> None:
+    from halflight.engine.actions import Custom
+    from halflight.engine.results import StateChange, TurnResult
+    from halflight.engine.state import apply
+
+    run_ingest(FIXTURE, session, fake_embedder)
+    run_id = start_run(
+        session, character_name="Vex", start_location="loc_tram_hub", stats=STATS, hp=30
+    )
+
+    def _hp_change(delta: int) -> TurnResult:
+        return TurnResult(
+            action=Custom(description="test"),
+            valid=True,
+            outcome="success",
+            state_changes=[StateChange(entity="player", field="hp", delta=delta)],
+        )
+
+    # Take a wound, then over-heal: hp must not exceed hp_max (== starting hp).
+    apply(session, run_id, _hp_change(-10))
+    apply(session, run_id, _hp_change(999))
+    state = load_state(session, run_id)
+    assert state.player.hp == 30
+    assert state.player.hp_max == 30
+
+
 def test_heat_decays_when_lying_low(session: Session, fake_embedder: FakeEmbedder) -> None:
     from halflight.engine.actions import Move
 

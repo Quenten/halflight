@@ -103,6 +103,7 @@ class StateResponse(BaseModel):
     run_id: int
     character_name: str
     hp: int
+    hp_max: int
     credits: int
     location_id: str
     location_name: str

@@ -45,6 +45,7 @@ class PlayerState(SQLModel, table=True):
 
     run_id: int = Field(primary_key=True, foreign_key="runs.id")
     hp: int
+    hp_max: int = 0
     credits: int = 0
     location_id: str
     stats: dict[str, Any] = Field(default_factory=dict, sa_column=_jsonb())

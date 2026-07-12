@@ -112,6 +112,7 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
         run_id=run_id,
         character_name=run.character_name,
         hp=state.player.hp,
+        hp_max=state.player.hp_max,
         credits=state.player.credits,
         location_id=state.location.id,
         location_name=_name(session, Location, state.location.id),

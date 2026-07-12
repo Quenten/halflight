@@ -40,7 +40,8 @@ def start_run(
 
     session.add(
         PlayerState(
-            run_id=run_id, hp=hp, credits=credits, location_id=start_location, stats=stats
+            run_id=run_id, hp=hp, hp_max=hp, credits=credits,
+            location_id=start_location, stats=stats,
         )
     )
     for item_id, qty in (inventory or {}).items():

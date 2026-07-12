@@ -238,7 +238,8 @@ function enterGame(s) {
 function renderState(s) {
   document.getElementById('loc').textContent = s.location_name || s.location_id;
   const hp = document.getElementById('hp');
-  hp.querySelector('b').textContent = s.hp; hp.classList.toggle('low', s.hp <= 5);
+  hp.querySelector('b').textContent = s.hp + (s.hp_max ? '/' + s.hp_max : '');
+  hp.classList.toggle('low', s.hp <= 5);
   document.getElementById('scrip').textContent = s.credits;
   document.getElementById('time').textContent = s.time_ticks;
   const heat = document.getElementById('heat');
@@ -247,7 +248,7 @@ function renderState(s) {
   heat.classList.toggle('warm', s.heat >= 4 && s.heat < 8);
 
   document.getElementById('sheet-status').innerHTML =
-    row('HP', s.hp) + row('Credits', s.credits + ' cr') + row('Heat', s.heat) +
+    row('HP', s.hp + (s.hp_max ? ' / ' + s.hp_max : '')) + row('Credits', s.credits + ' cr') + row('Heat', s.heat) +
     row('Location', s.location_name || s.location_id) + row('Turn', s.time_ticks);
   const order = ['muscle','nerve','wits','tech','streetwise','presence'];
   const stats = s.stats || {};

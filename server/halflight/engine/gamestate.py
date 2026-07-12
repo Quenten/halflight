@@ -22,6 +22,7 @@ class PlayerView:
     credits: int = 0
     time_ticks: int = 0
     heat: int = 0
+    hp_max: int = 0
 
     def stat(self, name: str) -> int:
         return self.stats.get(name, BASELINE_STAT)

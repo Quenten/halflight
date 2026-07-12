@@ -79,6 +79,7 @@ def load_state(session: Session, run_id: int) -> GameState:
         credits=ps.credits,
         time_ticks=ps.time_ticks,
         heat=ps.heat,
+        hp_max=ps.hp_max or ps.hp,
     )
     return GameState(
         player=player, location=location, npcs=npcs, items=items, faction_rep=faction_rep
@@ -114,7 +115,9 @@ def _apply_player(session: Session, run_id: int, change: StateChange) -> None:
     if field == "location_id":
         ps.location_id = str(change.delta)
     elif field == "hp":
-        ps.hp += int(change.delta)
+        delta = int(change.delta)
+        new_hp = ps.hp + delta
+        ps.hp = min(ps.hp_max or ps.hp, new_hp) if delta > 0 else new_hp
     elif field == "credits":
         ps.credits += int(change.delta)
     elif field == "time_ticks":
