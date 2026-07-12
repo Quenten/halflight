@@ -63,11 +63,13 @@ def play_turn(
     # A sharp investigate can uncover a secret; reveal before retrieval so it surfaces now.
     maybe_reveal_on_investigate(session, embedder, action, result, state)
 
-    # Retrieval + NPC memories reflect the state before we record this turn's event.
+    # Narrate from the post-action scene (e.g. after a move you're at the new place with
+    # its people, not trailing the old location's crowd).
+    post = load_state(session, run_id)
     retrieved = retrieve(text, embedder, session, k=6, run_id=run_id)
-    npc_mems = scene_npc_memories(session, run_id, [n.id for n in state.npcs.values()])
+    npc_mems = scene_npc_memories(session, run_id, [n.id for n in post.npcs.values()])
     story = format_summary(latest_summary(session, run_id))
-    context = build_context(state, result, retrieved, text, npc_mems, story)
+    context = build_context(post, result, retrieved, text, npc_mems, story)
     narration = narrate(chat, system=system_prompt(vault_path), context=context, result=result)
 
     turn_no = current_turn_no(session, run_id)
