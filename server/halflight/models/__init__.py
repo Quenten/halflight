@@ -10,6 +10,7 @@ from halflight.models.authored import (
 )
 from halflight.models.runtime import (
     Event,
+    EventChunk,
     FactionRep,
     Inventory,
     NpcState,
@@ -19,6 +20,7 @@ from halflight.models.runtime import (
 
 __all__ = [
     "Event",
+    "EventChunk",
     "Faction",
     "FactionRep",
     "Inventory",

@@ -1,35 +1,34 @@
-"""Lore retrieval: top-k cosine search over embedded chunks.
+"""Retrieval: top-k merged lore + event memory.
 
-Excludes unrevealed secrets (they carry no embedding until an engine event reveals
-them, and the filter is explicit for when they do). Event chunks and recency
-boosting arrive in M6; this is the lore-only baseline the narrator draws on.
+Lore chunks are ranked by cosine similarity. Event memories (M6, scoped to the
+run) get a recency boost — recent significant events surface even against
+slightly-more-similar lore — following the handoff formula
+`similarity * (1 + 0.1 * ln(1 + recency))`. Unrevealed secrets are excluded.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from sqlmodel import Session, col, or_, select
 
 from halflight.ingest.embedder import Embedder
-from halflight.models import LoreChunk
+from halflight.models import EventChunk, LoreChunk
+
+RECENCY_WEIGHT = 0.1
 
 
 @dataclass
 class RetrievedChunk:
     source_note_id: str
-    source_type: str
+    source_type: str  # "location" | "npc" | ... | "lore" | "event"
     body: str
     distance: float
+    score: float = 0.0
 
 
-def retrieve(
-    query: str, embedder: Embedder, session: Session, *, k: int = 6
-) -> list[RetrievedChunk]:
-    vectors = embedder.embed([query])
-    if not vectors:
-        return []
-    vec = vectors[0]
+def _lore_candidates(vec: list[float], session: Session, k: int) -> list[RetrievedChunk]:
     distance = LoreChunk.embedding.cosine_distance(vec)  # type: ignore[union-attr]
     rows = session.exec(
         select(LoreChunk, distance.label("distance"))
@@ -39,11 +38,54 @@ def retrieve(
         .limit(k)
     ).all()
     return [
-        RetrievedChunk(
-            source_note_id=chunk.source_note_id,
-            source_type=chunk.source_type,
-            body=chunk.body,
-            distance=float(dist),
-        )
-        for chunk, dist in rows
+        RetrievedChunk(c.source_note_id, c.source_type, c.body, float(d), score=1.0 - float(d))
+        for c, d in rows
     ]
+
+
+def _event_candidates(
+    vec: list[float], session: Session, run_id: int, k: int
+) -> list[RetrievedChunk]:
+    distance = EventChunk.embedding.cosine_distance(vec)  # type: ignore[union-attr]
+    rows = session.exec(
+        select(EventChunk, distance.label("distance"))
+        .where(col(EventChunk.run_id) == run_id)
+        .where(col(EventChunk.embedding).is_not(None))
+        .order_by(distance)
+        .limit(k)
+    ).all()
+    out: list[RetrievedChunk] = []
+    for chunk, d in rows:
+        similarity = 1.0 - float(d)
+        boost = 1.0 + RECENCY_WEIGHT * math.log1p(chunk.turn_no)
+        out.append(
+            RetrievedChunk(
+                source_note_id=f"event:{chunk.event_id}",
+                source_type="event",
+                body=chunk.description,
+                distance=float(d),
+                score=similarity * boost,
+            )
+        )
+    return out
+
+
+def retrieve(
+    query: str,
+    embedder: Embedder,
+    session: Session,
+    *,
+    k: int = 6,
+    run_id: int | None = None,
+) -> list[RetrievedChunk]:
+    vectors = embedder.embed([query])
+    if not vectors:
+        return []
+    vec = vectors[0]
+
+    candidates = _lore_candidates(vec, session, k)
+    if run_id is not None:
+        candidates += _event_candidates(vec, session, run_id, k)
+
+    candidates.sort(key=lambda c: c.score, reverse=True)
+    return candidates[:k]

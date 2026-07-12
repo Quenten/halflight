@@ -9,9 +9,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import ARRAY, Column, DateTime, Index, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
+
+from halflight.models.authored import EMBED_DIM
 
 
 def utcnow() -> datetime:
@@ -90,4 +93,25 @@ class Event(SQLModel, table=True):
         default_factory=list,
         sa_column=Column(ARRAY(Text), nullable=False, server_default="{}"),
     )
+    ts: datetime = Field(sa_column=_ts_col(nullable=False))
+
+
+class EventChunk(SQLModel, table=True):
+    """One embedded, one-line factual memory of a significant event (M6)."""
+
+    __tablename__ = "event_chunks"
+    __table_args__ = (
+        Index(
+            "ix_event_chunks_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    event_id: int = Field(primary_key=True, foreign_key="events.id")
+    run_id: int = Field(index=True, foreign_key="runs.id")
+    turn_no: int
+    description: str = Field(sa_column=Column(Text, nullable=False))
+    embedding: Any | None = Field(default=None, sa_column=Column(Vector(EMBED_DIM), nullable=True))
     ts: datetime = Field(sa_column=_ts_col(nullable=False))

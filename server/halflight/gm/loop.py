@@ -19,12 +19,14 @@ from halflight.engine.state import load_state
 from halflight.engine.turn import current_turn_no, take_turn
 from halflight.gm.client import LLMClient
 from halflight.gm.context import build_context
+from halflight.gm.memory import record_event_memory
 from halflight.gm.narrator import narrate, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
 from halflight.gm.retrieval import retrieve
 from halflight.gm.turnlog import log_turn
 from halflight.ingest.embedder import Embedder
+from halflight.models import Run
 
 
 @dataclass
@@ -55,7 +57,8 @@ def play_turn(
     # Engine resolves, applies, logs the event, and commits.
     result = take_turn(session, run_id, action, dice)
 
-    retrieved = retrieve(text, embedder, session, k=6)
+    # Retrieval (prior events + lore) happens before we record this turn's memory.
+    retrieved = retrieve(text, embedder, session, k=6, run_id=run_id)
     context = build_context(state, result, retrieved, text)
     narration = narrate(chat, system=system_prompt(vault_path), context=context, result=result)
 
@@ -71,5 +74,12 @@ def play_turn(
         narration=narration,
         action=action.model_dump(),
         result=result.model_dump(),
+    )
+
+    run = session.get(Run, run_id)
+    record_event_memory(
+        session, embedder, run_id=run_id, turn_no=turn_no, result=result,
+        actor=run.character_name if run else "The runner",
+        location=state.location.name or state.location.id,
     )
     return PlayedTurn(action=action, result=result, narration=narration, turn_no=turn_no)
