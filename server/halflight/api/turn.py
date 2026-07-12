@@ -30,6 +30,7 @@ from halflight.gm.narrator import check_consistency, factual_fallback, strip_thi
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
 from halflight.gm.retrieval import retrieve
+from halflight.gm.secrets import maybe_reveal_on_investigate
 from halflight.gm.turnlog import log_turn
 from halflight.models import Run
 
@@ -59,6 +60,8 @@ def turn(
     try:
         action = parse_intent(req.text, state, chat, system=parse_system)
         result = take_turn(session, req.run_id, action, None)
+        # A sharp investigate can uncover a secret; reveal before retrieval so it surfaces now.
+        maybe_reveal_on_investigate(session, embedder, action, result, state)
         # Retrieval + NPC memories reflect the state before this turn's event is recorded.
         retrieved = retrieve(req.text, embedder, session, k=6, run_id=req.run_id)
         npc_mems = scene_npc_memories(session, req.run_id, [n.id for n in state.npcs.values()])

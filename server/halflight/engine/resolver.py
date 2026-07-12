@@ -211,11 +211,15 @@ def _resolve_use_item(state: GameState, action: UseItem) -> TurnResult:
     )
 
 
-def _resolve_investigate(state: GameState, action: Investigate) -> TurnResult:
-    # Mechanically inert; the narrator surfaces detail from retrieval (secrets are M6).
+def _resolve_investigate(state: GameState, action: Investigate, dice: Roller) -> TurnResult:
+    # Narrative outcome (so questions/looks always read well), but a wits roll is
+    # recorded: the GM layer uses it to gate whether a hidden secret is uncovered.
+    roll = dice.d20() + stat_mod(state.player.stat("wits"))
     return TurnResult(
         action=action,
         valid=True,
+        roll=roll,
+        difficulty=DIFFICULTY["medium"],
         outcome="narrative_only",
         scene_events=[SceneEvent(kind="investigated", detail={"target": action.target})],
     )
@@ -259,5 +263,5 @@ def resolve(state: GameState, action: Action, dice: Roller) -> TurnResult:
     if isinstance(action, UseItem):
         return _resolve_use_item(state, action)
     if isinstance(action, Investigate):
-        return _resolve_investigate(state, action)
+        return _resolve_investigate(state, action, dice)
     return _resolve_custom(state, action, dice)

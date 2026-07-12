@@ -24,6 +24,7 @@ from halflight.gm.narrator import narrate, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
 from halflight.gm.retrieval import retrieve
+from halflight.gm.secrets import maybe_reveal_on_investigate
 from halflight.gm.turnlog import log_turn
 from halflight.ingest.embedder import Embedder
 from halflight.models import Run
@@ -56,6 +57,9 @@ def play_turn(
 
     # Engine resolves, applies, logs the event, and commits.
     result = take_turn(session, run_id, action, dice)
+
+    # A sharp investigate can uncover a secret; reveal before retrieval so it surfaces now.
+    maybe_reveal_on_investigate(session, embedder, action, result, state)
 
     # Retrieval + NPC memories reflect the state before we record this turn's event.
     retrieved = retrieve(text, embedder, session, k=6, run_id=run_id)

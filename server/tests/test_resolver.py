@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from halflight.engine.actions import Attack, Custom, Move, Talk, Trade, UseItem
+from halflight.engine.actions import Attack, Custom, Investigate, Move, Talk, Trade, UseItem
 from halflight.engine.gamestate import GameState, ItemView, LocationView, NpcView, PlayerView
 from halflight.engine.resolver import resolve
 
@@ -119,6 +119,12 @@ def test_custom_impossible_without_leading_pronoun() -> None:
         res = resolve(make_state(), Custom(description=desc), SeqRoller([]))
         assert res.outcome == "failure", desc
         assert res.state_changes == []
+
+
+def test_investigate_rolls_but_stays_narrative() -> None:
+    res = resolve(make_state(), Investigate(target="loc_a"), SeqRoller([12]))
+    assert res.outcome == "narrative_only"
+    assert res.roll == 12 and res.difficulty == 15
 
 
 def test_custom_plausible_success() -> None:
