@@ -73,3 +73,26 @@ def test_real_move_is_kept() -> None:
     client = FakeClient(['{"kind": "move", "target": "loc_b"}'])
     action = parse_intent("head over to loc_b", make_state(), client, system="SYS")
     assert isinstance(action, Move) and action.target == "loc_b"
+
+
+def test_violence_at_present_npc_forced_to_attack() -> None:
+    # Model mis-reads "gun Dax down" as investigate; guard forces an attack.
+    client = FakeClient(['{"kind": "investigate", "target": null}'])
+    action = parse_intent("draw the pistol and gun Dax down", make_state(), client, system="SYS")
+    assert isinstance(action, Attack) and action.target == "npc_dax"
+
+
+def test_talk_wins_over_stray_travel_word() -> None:
+    # "work going" tripped the travel guard; talking to a present NPC must still win.
+    client = FakeClient(['{"kind": "move", "target": "loc_b"}'])
+    action = parse_intent(
+        "greet Dax and ask what work is going", make_state(), client, system="SYS"
+    )
+    assert isinstance(action, Talk) and action.target == "npc_dax"
+
+
+def test_violence_about_someone_is_not_forced() -> None:
+    # A question mentioning violence shouldn't become an attack.
+    client = FakeClient(['{"kind": "talk", "target": "npc_dax"}'])
+    action = parse_intent("ask Dax who I should kill next", make_state(), client, system="SYS")
+    assert isinstance(action, Talk)

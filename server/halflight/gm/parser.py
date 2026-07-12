@@ -12,7 +12,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from halflight.engine.actions import Action, Custom, Investigate, Move, Talk, parse_action
+from halflight.engine.actions import Action, Attack, Custom, Investigate, Move, Talk, parse_action
 from halflight.engine.gamestate import GameState
 from halflight.gm.client import LLMClient
 
@@ -27,8 +27,15 @@ _TRAVEL = re.compile(
     re.IGNORECASE,
 )
 _TALK = re.compile(
-    r"\b(ask|asks|tell|tells|talk|talking|speak|say|says|question|greet|answer|"
-    r"reply|chat|whisper|demand|beg|threaten)\b",
+    r"\b(ask|asks|tell|tells|talk|talking|speak|say|says|question|greet|greets|nod|"
+    r"hail|answer|reply|chat|whisper|demand|beg|threaten)\b",
+    re.IGNORECASE,
+)
+# Violence at a present NPC is an attack, whatever the model guessed.
+_VIOLENCE = re.compile(
+    r"\b(attack|attacks|kill|kills|shoot|shoots|gun|stab|stabs|knife|knifes|hit|hits|"
+    r"strike|strikes|punch|punches|beat|beats|slug|club|maul|choke|gut|murder|"
+    r"fight|fire on|open fire|swing at|lunge at|jump)\b",
     re.IGNORECASE,
 )
 
@@ -89,14 +96,28 @@ def _present_npc(text: str, state: GameState) -> str | None:
     return None
 
 
-def _guard_move(action: Action, text: str, state: GameState) -> Action:
-    """Reject a `move` with no travel cue — the model over-picks it. Re-interpret
-    as talk (a present NPC is addressed) or investigate, so the player stays put."""
+def _guard(action: Action, text: str, state: GameState) -> Action:
+    """Correct the model's most common misfires against the actual scene, in priority
+    order: violence at a present NPC is an attack; addressing one is talk; a `move`
+    with no travel cue is a spurious teleport."""
+    npc = _present_npc(text, state)
+
+    # Violence toward a present NPC — unless they're only being spoken about.
+    if npc is not None and _VIOLENCE.search(text) and not _TALK.search(text):
+        if not isinstance(action, Attack):
+            return Attack(target=npc)
+        return action
+
+    # Addressing a present NPC that the model turned into a move.
+    if npc is not None and _TALK.search(text) and isinstance(action, Move):
+        return Talk(target=npc)
+
+    # A move with no travel cue at all is a spurious teleport.
     if isinstance(action, Move) and not _TRAVEL.search(text):
-        npc = _present_npc(text, state)
         if npc is not None and _TALK.search(text):
             return Talk(target=npc)
         return Investigate()
+
     return action
 
 
@@ -114,5 +135,5 @@ def parse_intent(
         raw = client.complete(prompt, grammar=grammar, temperature=temperature)
         action = _coerce(raw)
         if action is not None:
-            return _guard_move(action, text, state)
+            return _guard(action, text, state)
     return Custom(description=text)
