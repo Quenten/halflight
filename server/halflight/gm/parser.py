@@ -34,9 +34,9 @@ _TALK = re.compile(
 # Violence at a present NPC is an attack, whatever the model guessed. Stems with \w*
 # catch inflections (attack/attacks/attacking/attacked, shoot/shooting, ...).
 _VIOLENCE = re.compile(
-    r"\b(attack\w*|kill\w*|murder\w*|shoot\w*|shot|stab\w*|knif\w*|punch\w*|hit\w*|"
-    r"strik\w*|struck|beat\w*|slug\w*|club\w*|maul\w*|chok\w*|fight\w*|fought|"
-    r"swing\w*|lung\w*|smash\w*|jump\s+\w+|gun\s+\w+\s+down|gun\s+down|open\s+fire|fire\s+on)\b",
+    r"\b(attack\w*|kill\w*|murder\w*|shoot\w*|shot|fir(e|es|ed|ing)|stab\w*|knif\w*|"
+    r"punch\w*|hit\w*|strik\w*|struck|beat\w*|slug\w*|club\w*|maul\w*|chok\w*|fight\w*|"
+    r"fought|swing\w*|lung\w*|smash\w*|jump\s+\w+|gun\s+\w+\s+down|gun\s+down|open\s+fire)\b",
     re.IGNORECASE,
 )
 

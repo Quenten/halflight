@@ -98,6 +98,12 @@ def test_attacking_inflection_hits_sole_npc() -> None:
     assert isinstance(action, Attack) and action.target == "npc_dax"
 
 
+def test_firing_inflection_is_attack() -> None:
+    client = FakeClient(['{"kind": "investigate", "target": null}'])
+    action = parse_intent("keep firing on him", make_state(), client, system="SYS")
+    assert isinstance(action, Attack) and action.target == "npc_dax"
+
+
 def test_violence_about_someone_is_not_forced() -> None:
     # A question mentioning violence shouldn't become an attack.
     client = FakeClient(['{"kind": "talk", "target": "npc_dax"}'])
