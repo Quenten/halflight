@@ -17,6 +17,7 @@ from halflight.models.runtime import (
     NpcState,
     PlayerState,
     Run,
+    Summary,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "Npc",
     "PlayerState",
     "Run",
+    "Summary",
 ]

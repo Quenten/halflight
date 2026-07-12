@@ -25,12 +25,14 @@ from halflight.config import get_settings
 from halflight.engine.state import load_state
 from halflight.engine.turn import current_turn_no, take_turn
 from halflight.gm.context import build_context
+from halflight.gm.gossip import propagate_gossip
 from halflight.gm.memory import record_event_memory, scene_npc_memories
 from halflight.gm.narrator import check_consistency, factual_fallback, strip_thinking, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
 from halflight.gm.retrieval import retrieve
 from halflight.gm.secrets import maybe_reveal_on_investigate
+from halflight.gm.summary import format_summary, latest_summary, maybe_summarize
 from halflight.gm.turnlog import log_turn
 from halflight.models import Run
 
@@ -65,12 +67,16 @@ def turn(
         # Retrieval + NPC memories reflect the state before this turn's event is recorded.
         retrieved = retrieve(req.text, embedder, session, k=6, run_id=req.run_id)
         npc_mems = scene_npc_memories(session, req.run_id, [n.id for n in state.npcs.values()])
-        context = build_context(state, result, retrieved, req.text, npc_mems)
+        story = format_summary(latest_summary(session, req.run_id))
+        context = build_context(state, result, retrieved, req.text, npc_mems, story)
+        turn_no = current_turn_no(session, req.run_id)
         record_event_memory(
-            session, embedder, run_id=req.run_id, turn_no=current_turn_no(session, req.run_id),
+            session, embedder, run_id=req.run_id, turn_no=turn_no,
             result=result, actor=run.character_name,
             location=state.location.name or state.location.id,
         )
+        propagate_gossip(session, req.run_id)
+        maybe_summarize(session, chat, req.run_id, turn_no)
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=503,
@@ -79,7 +85,6 @@ def turn(
     narrate_system = system_prompt(vault)
     parse_prompt_text = build_prompt(parse_system, state, req.text)
     snap = snapshot(session, req.run_id).model_dump()
-    turn_no = current_turn_no(session, req.run_id)
 
     def gen() -> Iterator[str]:
         messages = [

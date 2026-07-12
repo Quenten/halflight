@@ -19,12 +19,14 @@ from halflight.engine.state import load_state
 from halflight.engine.turn import current_turn_no, take_turn
 from halflight.gm.client import LLMClient
 from halflight.gm.context import build_context
+from halflight.gm.gossip import propagate_gossip
 from halflight.gm.memory import record_event_memory, scene_npc_memories
 from halflight.gm.narrator import narrate, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
 from halflight.gm.retrieval import retrieve
 from halflight.gm.secrets import maybe_reveal_on_investigate
+from halflight.gm.summary import format_summary, latest_summary, maybe_summarize
 from halflight.gm.turnlog import log_turn
 from halflight.ingest.embedder import Embedder
 from halflight.models import Run
@@ -64,7 +66,8 @@ def play_turn(
     # Retrieval + NPC memories reflect the state before we record this turn's event.
     retrieved = retrieve(text, embedder, session, k=6, run_id=run_id)
     npc_mems = scene_npc_memories(session, run_id, [n.id for n in state.npcs.values()])
-    context = build_context(state, result, retrieved, text, npc_mems)
+    story = format_summary(latest_summary(session, run_id))
+    context = build_context(state, result, retrieved, text, npc_mems, story)
     narration = narrate(chat, system=system_prompt(vault_path), context=context, result=result)
 
     turn_no = current_turn_no(session, run_id)
@@ -87,4 +90,6 @@ def play_turn(
         actor=run.character_name if run else "The runner",
         location=state.location.name or state.location.id,
     )
+    propagate_gossip(session, run_id)
+    maybe_summarize(session, chat, run_id, turn_no)
     return PlayedTurn(action=action, result=result, narration=narration, turn_no=turn_no)

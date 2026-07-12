@@ -32,6 +32,7 @@ def build_context(
     retrieved: list[RetrievedChunk],
     player_text: str,
     npc_memories: dict[str, list[str]] | None = None,
+    story_so_far: str | None = None,
 ) -> str:
     p = state.player
     loc = state.location.name or state.location.id
@@ -39,6 +40,8 @@ def build_context(
         f"## Your state\nHP {p.hp} · Scrip {p.credits} · Time {p.time_ticks}",
         f"## Where you are\nThe scene takes place at: {loc}. The narration stays here.",
     ]
+    if story_so_far:
+        parts.append("## The story so far (established; stay consistent with it)\n" + story_so_far)
 
     if state.npcs:
         who = ", ".join(

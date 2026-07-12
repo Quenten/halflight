@@ -128,3 +128,15 @@ class NpcMemory(SQLModel, table=True):
     event_id: int = Field(primary_key=True, foreign_key="events.id")
     how_known: str = "witnessed"  # witnessed | told | public
     ts: datetime = Field(sa_column=_ts_col(nullable=False))
+
+
+class Summary(SQLModel, table=True):
+    """Rolling episodic summary of older turns (M6): facts / promises / threads."""
+
+    __tablename__ = "summaries"
+
+    id: int | None = Field(default=None, primary_key=True)
+    run_id: int = Field(index=True, foreign_key="runs.id")
+    up_to_turn: int
+    body: dict[str, Any] = Field(default_factory=dict, sa_column=_jsonb())
+    ts: datetime = Field(sa_column=_ts_col(nullable=False))
