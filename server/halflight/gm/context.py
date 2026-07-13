@@ -37,6 +37,42 @@ def describe_result(result: TurnResult) -> str:
     return "\n".join(lines)
 
 
+def build_opening_context(
+    state: GameState,
+    character_name: str,
+    retrieved: list[RetrievedChunk],
+    place_lore: list[str] | None = None,
+    origin: str | None = None,
+) -> str:
+    """Prompt for the very first beat of a run: set the scene, no action taken yet."""
+    loc = state.location.name or state.location.id
+    parts: list[str] = [f"## Who you are\nYou are {character_name}."]
+    if origin:
+        parts.append("## Your past (let it quietly color how you see this place)\n" + origin)
+    parts.append(f"## Where you are\nYou are at: {loc}. The opening stays here.")
+    if place_lore:
+        parts.append("## This place (ground the scene in THIS)\n" + "\n".join(place_lore))
+    present = [n.name or n.id for n in state.npcs.values() if n.alive]
+    if present:
+        parts.append(
+            "## Who is physically present (the ONLY people here)\n" + ", ".join(present)
+            + "\nDo not bring in anyone else."
+        )
+    else:
+        parts.append("## Who is physically present\nNo one. You are alone here.")
+    if retrieved:
+        lore = "\n\n".join(f"- {c.body}" for c in retrieved)
+        parts.append("## Background you may know (not necessarily present)\n" + lore)
+    parts.append(
+        "Write the OPENING of the story — set the scene where the character comes to. Second "
+        "person, past tense, plain and readable prose, 50-90 words. Describe where they are and "
+        "who is physically present, grounded in the details above. Do not invent a plot, a task, "
+        "or an inciting incident; do not put words or decisions in the character's mouth; do not "
+        "ask questions. Just place them in the world as it stands."
+    )
+    return "\n\n".join(parts)
+
+
 def build_context(
     state: GameState,
     result: TurnResult,

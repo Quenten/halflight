@@ -334,8 +334,29 @@ function enterGame(s) {
   runId = s.run_id; localStorage.setItem('hl_run', runId);
   creator.classList.add('hidden');
   log.innerHTML = '';
-  sys('You came to in ' + (s.location_name || s.location_id) + '. The halflight did not change.');
-  renderState(s); setEnabled(true);
+  renderState(s); setEnabled(false);
+  streamOpening(s);
+}
+
+async function streamOpening(s) {
+  const thinking = el('thinking', '…');
+  const narr = el('narr', '');
+  let started = false;
+  try {
+    const resp = await fetch('/opening?run_id=' + s.run_id, {method:'POST'});
+    if (!resp.ok) { thinking.remove(); sys('(' + (s.location_name || s.location_id) + ')'); return; }
+    const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const {done, value} = await reader.read(); if (done) break;
+      buf += dec.decode(value, {stream:true});
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        if (!started) { thinking.remove(); started = true; }
+        handleFrame(buf.slice(0, i), narr); buf = buf.slice(i + 2);
+      }
+    }
+  } catch (e) { narr.textContent += '\n[opening unavailable]'; }
+  finally { thinking.remove(); if (runId) setEnabled(true); }
 }
 
 /* ---------- play ---------- */

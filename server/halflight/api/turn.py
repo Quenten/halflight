@@ -26,7 +26,7 @@ from halflight.config import get_settings
 from halflight.db import engine
 from halflight.engine.state import load_state
 from halflight.engine.turn import current_turn_no, take_turn
-from halflight.gm.context import build_context
+from halflight.gm.context import build_context, build_opening_context
 from halflight.gm.gossip import propagate_gossip
 from halflight.gm.memory import record_event_memory, scene_npc_memories
 from halflight.gm.narrator import check_consistency, factual_fallback, strip_thinking, system_prompt
@@ -63,6 +63,44 @@ def _save_narration(run_id: int, turn_no: int, player_text: str, body: str) -> N
             s.commit()
     except Exception:  # noqa: BLE001 - persistence is best-effort, never fatal to a turn
         pass
+
+
+@router.post("/opening")
+def opening(
+    run_id: int, session: SessionDep, chat: ChatDep, embedder: EmbedderDep
+) -> StreamingResponse:
+    """Stream the opening scene of a run — the narrator setting where you are and who's
+    here, with no action taken yet. Saved as turn 0 so a resume replays it."""
+    settings = get_settings()
+    run = session.get(Run, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"no run {run_id}")
+
+    state = load_state(session, run_id)
+    try:
+        retrieved = retrieve(state.location.name or state.location.id, embedder, session, k=4)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=503, detail="model server unreachable") from exc
+    here = location_lore(session, state.location.id)
+    context = build_opening_context(
+        state, run.character_name, retrieved, place_lore=here, origin=run.origin
+    )
+    narrate_system = system_prompt(settings.vault_path)
+
+    def gen() -> Iterator[str]:
+        messages = [
+            {"role": "system", "content": narrate_system},
+            {"role": "user", "content": context},
+        ]
+        acc: list[str] = []
+        for token in chat.chat_stream(messages, temperature=0.7, max_tokens=200):
+            acc.append(token)
+            yield _sse("token", {"text": token})
+        narration = strip_thinking("".join(acc))
+        _save_narration(run_id, 0, "", narration)  # turn 0 = the opening
+        yield _sse("done", {})
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 @router.post("/turn")
