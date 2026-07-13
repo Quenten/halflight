@@ -55,8 +55,7 @@ Endpoints: `GET /chargen` + `POST /runs/chargen` (character creator), `POST /run
 `logs/turns/{run_id}/{turn_no}.json`.
 
 The city runs on shifts (Highshift → Lowshift → Deadshift); the clock advances one
-tick per turn and deadshift is curfew. Violence raises **Heat** — the Watch's
-attention — which decays as you lie low. Kill or rob a faction's people and your
+tick per turn and deadshift is curfew. Kill or rob a faction's people and your
 standing with all of them drops, and NPCs remember and gossip about what they saw.
 
 ## Vault ingestion

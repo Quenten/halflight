@@ -51,7 +51,7 @@ def build_context(
     loc = state.location.name or state.location.id
     shift = shift_for(p.time_ticks)
     parts: list[str] = [
-        f"## Your state\nHP {p.hp} · Scrip {p.credits} · {shift.name} · Heat {p.heat}",
+        f"## Your state\nHP {p.hp} · Scrip {p.credits} · {shift.name}",
         f"## Where you are\nThe scene takes place at: {loc}. The narration stays here.",
         f"## The hour ({shift.name} — the city runs on shifts, not day and night)\n{shift.mood}",
     ]
@@ -71,16 +71,6 @@ def build_context(
     else:
         parts.append("## What you are carrying\nNothing but the clothes you're in.")
 
-    if p.heat >= 8:
-        parts.append(
-            "## The Watch\nYour heat is high. Watch Command is actively hunting you — patrols,"
-            " drones, informants. Let that pressure bleed into the scene; strangers watch too long."
-        )
-    elif p.heat >= 4:
-        parts.append(
-            "## The Watch\nYou've drawn attention. There's a wariness in the air — the Watch is"
-            " asking questions about you. Keep it subtle."
-        )
     if origin:
         parts.append(
             "## Who you are (the character's past — do NOT recap it; let it quietly color "
