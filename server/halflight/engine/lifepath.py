@@ -23,10 +23,21 @@ class Effect:
 
 
 @dataclass
+class ContactSpec:
+    """A person your backstory leaves you with — seeded into the run as a real NPC."""
+
+    name: str
+    relationship: str  # ally | enemy | fearful | rival | missing | contact
+    note: str
+    location: str = ""  # "" = whereabouts unknown / off-screen
+
+
+@dataclass
 class Outcome:
     kind: str  # positive | neutral | negative
     text: str
     effect: Effect = field(default_factory=Effect)
+    contact: ContactSpec | None = None
 
 
 @dataclass
@@ -38,6 +49,7 @@ class Option:
     base: Effect = field(default_factory=Effect)
     outcomes: list[Outcome] = field(default_factory=list)
     start_location: str | None = None  # where this choice leaves you (last-job step)
+    contact: ContactSpec | None = None  # for flat (non-rolled) steps
 
 
 @dataclass
@@ -88,19 +100,22 @@ CLASSES: list[ClassDef] = [
 ]
 
 
-def _pos(text: str, **stats: int) -> Outcome:
+def _pos(text: str, contact: ContactSpec | None = None, **stats: int) -> Outcome:
     d = {k: v for k, v in stats.items() if k not in ("hp", "cr")}
-    return Outcome("positive", text, Effect(dcredits=stats.get("cr", 0), dstats=d))
+    return Outcome("positive", text, Effect(dcredits=stats.get("cr", 0), dstats=d), contact)
 
 
-def _neu(text: str, **stats: int) -> Outcome:
+def _neu(text: str, contact: ContactSpec | None = None, **stats: int) -> Outcome:
     d = {k: v for k, v in stats.items() if k not in ("hp", "cr")}
-    return Outcome("neutral", text, Effect(dcredits=stats.get("cr", 0), dstats=d))
+    return Outcome("neutral", text, Effect(dcredits=stats.get("cr", 0), dstats=d), contact)
 
 
-def _neg(text: str, **stats: int) -> Outcome:
+def _neg(text: str, contact: ContactSpec | None = None, **stats: int) -> Outcome:
     d = {k: v for k, v in stats.items() if k not in ("hp", "cr")}
-    return Outcome("negative", text, Effect(dhp=stats.get("hp", 0), dcredits=stats.get("cr", 0), dstats=d))
+    return Outcome(
+        "negative", text,
+        Effect(dhp=stats.get("hp", 0), dcredits=stats.get("cr", 0), dstats=d), contact,
+    )
 
 
 STEPS: list[Step] = [
@@ -121,9 +136,13 @@ STEPS: list[Step] = [
         id="marked", title="WHAT MARKED YOU", prompt="What changed everything?", rolls=True,
         options=[
             Option("betrayal", "Betrayal", "Someone you trusted.", "±presence", outcomes=[
-                _pos("They tried to bury you and missed. You came out sharper, and you kept the leverage.", presence=1, cr=30),
+                _pos("They tried to bury you and missed. You came out sharper, and you kept the leverage.",
+                     ContactSpec("Wick", "fearful", "Tried to sell you out. You turned it around and kept the "
+                                 "recordings — now they flinch when you call."), presence=1, cr=30),
                 _neu("It cost you a friend and taught you a lesson. Even trade.", presence=0),
-                _neg("It broke something you haven't gotten back. You trust no one now.", presence=-1, cr=-20),
+                _neg("It broke something you haven't gotten back. You trust no one now.",
+                     ContactSpec("Wick", "enemy", "Sold you out and walked away clean. You haven't settled it."),
+                     presence=-1, cr=-20),
             ]),
             Option("violence", "Violence", "You survived what shouldn't be survivable.", "±nerve ±muscle", outcomes=[
                 _pos("You walked away from it harder than you went in. Scars, but the good kind.", nerve=1, muscle=1),
@@ -146,19 +165,29 @@ STEPS: list[Step] = [
         id="ran_with", title="WHO YOU RAN WITH", prompt="Who pulled you into their orbit?", rolls=True,
         options=[
             Option("fixer", "A Saltline fixer", "Work for hire, no questions.", "±streetwise", outcomes=[
-                _pos("The work was steady and the fixer square with you. You banked a stake.", streetwise=1, cr=50),
+                _pos("The work was steady and the fixer square with you. You banked a stake.",
+                     ContactSpec("Corva", "ally", "A Saltline fixer who dealt square with you. Owes you nothing, "
+                                 "but she takes your calls."), streetwise=1, cr=50),
                 _neu("Jobs came and went. You're neither ahead nor behind.", streetwise=0),
-                _neg("The fixer set you up as the fall. You did time; they vanished.", streetwise=-1, cr=-40),
+                _neg("The fixer set you up as the fall. You did time; they vanished.",
+                     ContactSpec("Corva", "enemy", "Set you up as the fall and vanished while you did the time."),
+                     streetwise=-1, cr=-40),
             ]),
             Option("gutter", "A gutter crew", "Family, until it wasn't.", "±muscle", outcomes=[
-                _pos("They had your back and you had theirs. You came out tougher and connected.", muscle=1, cr=20),
+                _pos("They had your back and you had theirs. You came out tougher and connected.",
+                     ContactSpec("Pell", "ally", "Ran the gutter crew you came up in. Still owes you a couple of "
+                                 "favors and a share."), muscle=1, cr=20),
                 _neu("You ran with them a while. It ended quietly.", muscle=1),
-                _neg("It ended in blood, and not theirs alone. You still owe for it.", muscle=-1, hp=-4),
+                _neg("It ended in blood, and not theirs alone. You still owe for it.",
+                     ContactSpec("Pell", "rival", "Your old crew boss. It ended in blood and you still owe for "
+                                 "it."), muscle=-1, hp=-4),
             ]),
             Option("handler", "A Combine handler", "Clean work, dirty hands.", "±tech", outcomes=[
                 _pos("The Combine paid well and taught you their tools. You kept the tools.", tech=1, cr=60),
                 _neu("Clean jobs, clean pay, no loyalty either way.", tech=1),
-                _neg("They used you up and cut you loose with a ledger-tag you can't clear.", tech=-1, cr=-30),
+                _neg("They used you up and cut you loose with a ledger-tag you can't clear.",
+                     ContactSpec("Dossen", "enemy", "The Combine handler who used you up and cut you loose with a "
+                                 "ledger-tag you can't clear."), tech=-1, cr=-30),
             ]),
             Option("alone", "Nobody", "You worked alone. Still do.", "±streetwise ±nerve", outcomes=[
                 _pos("No one to sell you out, no cut to pay. You kept everything you earned.", streetwise=1, nerve=1, cr=40),
@@ -178,15 +207,21 @@ STEPS: list[Step] = [
             ]),
             Option("protection", "A protection job", "Someone needed you. You showed up.", "±nerve ±muscle",
                    start_location="loc_ashwell", outcomes=[
-                _pos("You kept them alive and they paid what they promised. Rare, that.", nerve=1, muscle=1, cr=40),
+                _pos("You kept them alive and they paid what they promised. Rare, that.",
+                     ContactSpec("Dr. Sabec", "ally", "You kept them alive. They run a clinic here and the debt "
+                                 "runs your way now.", location="loc_ashwell"), nerve=1, muscle=1, cr=40),
                 _neu("You held the line. It cost more than it paid, but you held it.", nerve=1),
-                _neg("They died on your watch. You carry that, and the debt that came with it.", muscle=-1, hp=-6),
+                _neg("They died on your watch. You carry that, and the debt that came with it.",
+                     ContactSpec("Dr. Sabec", "missing", "Died on your watch — or was taken. You never found the "
+                                 "body, and you still carry it."), muscle=-1, hp=-6),
             ]),
             Option("double_cross", "A double-cross", "You sold out the people who trusted you.", "±presence",
                    start_location="loc_drip_market", outcomes=[
                 _pos("The betrayal paid clean and no one traced it back. Your conscience is negotiable.", presence=1, cr=70),
                 _neu("You got out with the scrip and a name people spit. Worth it, mostly.", cr=30, presence=-1),
-                _neg("They found out. You barely made the Undervault ahead of them.", presence=-1, hp=-4, cr=-10),
+                _neg("They found out. You barely made the Undervault ahead of them.",
+                     ContactSpec("Rhet", "enemy", "You sold out their crew. They found out, and they're still "
+                                 "looking."), presence=-1, hp=-4, cr=-10),
             ]),
             Option("runner", "A runner", "You ran from everything you'd built.", "±nerve",
                    start_location="loc_saltgate", outcomes=[
@@ -207,6 +242,7 @@ class BuildStep:
     outcome_kind: str
     text: str
     summary: str
+    contact: ContactSpec | None = None
 
 
 @dataclass
@@ -217,6 +253,7 @@ class Build:
     inventory: dict[str, int]
     start_location: str
     backstory: list[BuildStep]
+    contacts: list[ContactSpec] = field(default_factory=list)
 
 
 def get_class(class_id: str) -> ClassDef | None:
@@ -258,6 +295,7 @@ def resolve_build(class_id: str, choices: dict[str, str], dice: Roller) -> Build
     inventory = {item: 1 for item in cls.items}
     start_location = DEFAULT_START
     backstory: list[BuildStep] = []
+    contacts: list[ContactSpec] = []
 
     for step in STEPS:
         opt = next((o for o in step.options if o.id == choices.get(step.id)), None)
@@ -268,17 +306,22 @@ def resolve_build(class_id: str, choices: dict[str, str], dice: Roller) -> Build
         if step.rolls and opt.outcomes:
             outcome = _roll(opt.outcomes, dice)
             hp, credits = _apply(outcome.effect, hp, credits, stats)
+            contact = outcome.contact
             backstory.append(
                 BuildStep(step.id, step.title, opt.name, outcome.kind, outcome.text,
-                          _summary(outcome.effect))
+                          _summary(outcome.effect), contact)
             )
         else:
             hp, credits = _apply(opt.base, hp, credits, stats)
+            contact = opt.contact
             backstory.append(
-                BuildStep(step.id, step.title, opt.name, "chosen", opt.blurb, _summary(opt.base))
+                BuildStep(step.id, step.title, opt.name, "chosen", opt.blurb,
+                          _summary(opt.base), contact)
             )
+        if contact is not None:
+            contacts.append(contact)
 
     return Build(
         hp=max(1, hp), credits=max(0, credits), stats=stats, inventory=inventory,
-        start_location=start_location, backstory=backstory,
+        start_location=start_location, backstory=backstory, contacts=contacts,
     )

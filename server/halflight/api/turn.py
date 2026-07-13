@@ -111,7 +111,7 @@ def turn(
     narrate_system = system_prompt(vault)
     parse_prompt_text = build_prompt(parse_system, state, req.text)
     snap = snapshot(session, req.run_id).model_dump()
-    receipt = build_receipt(session, result)
+    receipt = build_receipt(session, result, req.run_id)
 
     def gen() -> Iterator[str]:
         messages = [

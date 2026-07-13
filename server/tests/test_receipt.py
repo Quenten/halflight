@@ -21,7 +21,7 @@ def _texts(items: list[dict[str, str]]) -> list[str]:
 
 def test_empty_result_has_no_receipt(session: Session) -> None:
     res = TurnResult(action=Custom(description="wait"), valid=True, outcome="narrative_only")
-    assert build_receipt(session, res) == []
+    assert build_receipt(session, res, 1) == []
 
 
 def test_combat_receipt(session: Session, fake_embedder: FakeEmbedder) -> None:
@@ -41,7 +41,7 @@ def test_combat_receipt(session: Session, fake_embedder: FakeEmbedder) -> None:
             SceneEvent(kind="player_hit", detail={"by": "npc_dax", "damage": 4}),
         ],
     )
-    items = build_receipt(session, res)
+    items = build_receipt(session, res, 1)
     texts = _texts(items)
     assert "Dax took 6 damage" in texts
     assert "You took 4 damage" in texts
@@ -64,7 +64,7 @@ def test_trade_and_item_receipt(session: Session, fake_embedder: FakeEmbedder) -
         ],
         scene_events=[SceneEvent(kind="item_gained", detail={"item": "itm_shiv"})],
     )
-    texts = _texts(build_receipt(session, res))
+    texts = _texts(build_receipt(session, res, 1))
     assert "Spent 8 scrip" in texts
     assert any(t.startswith("Picked up") for t in texts)
 
@@ -81,7 +81,7 @@ def test_heal_receipt(session: Session, fake_embedder: FakeEmbedder) -> None:
         ],
         scene_events=[SceneEvent(kind="item_used", detail={"item": "itm_stimshot"})],
     )
-    items = build_receipt(session, res)
+    items = build_receipt(session, res, 1)
     texts = _texts(items)
     assert "Healed 6 HP" in texts
     assert any(t.startswith("Lost") for t in texts)

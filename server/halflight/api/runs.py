@@ -16,6 +16,7 @@ from halflight.api.schemas import (
     FactionStanding,
     HistoryResponse,
     ItemBrief,
+    KnownNpc,
     LocationBrief,
     NpcBrief,
     OptionOut,
@@ -30,7 +31,7 @@ from halflight.engine.gamestate import effective_disposition
 from halflight.engine.lifepath import CLASSES, STEPS, resolve_build
 from halflight.engine.state import load_state
 from halflight.engine.turn import start_run
-from halflight.models import Faction, Item, Location, Narration, Npc, Run
+from halflight.models import Faction, Item, Location, Narration, Npc, NpcState, Run
 
 router = APIRouter()
 
@@ -79,11 +80,13 @@ def create_run_chargen(req: ChargenRequest, session: SessionDep) -> ChargenResul
         credits=build.credits,
         inventory=build.inventory,
         origin=origin,
+        contacts=build.contacts,
     )
     backstory = [
         BuildStepOut(
             step_title=b.step_title, option_name=b.option_name,
             outcome_kind=b.outcome_kind, text=b.text, summary=b.summary,
+            contact=f"{b.contact.name} ({b.contact.relationship})" if b.contact else None,
         )
         for b in build.backstory
     ]
@@ -93,6 +96,45 @@ def create_run_chargen(req: ChargenRequest, session: SessionDep) -> ChargenResul
 def _name(session: Session, model: type[SQLModel], id_: str) -> str:
     name = getattr(session.get(model, id_), "name", None)
     return name if isinstance(name, str) else id_
+
+
+def _mood_label(disp: int) -> str:
+    if disp <= -10:
+        return "hostile"
+    if disp < 0:
+        return "wary"
+    if disp >= 15:
+        return "ally"
+    if disp >= 5:
+        return "friendly"
+    return "neutral"
+
+
+def _known_npcs(session: Session, run_id: int, faction_rep: dict[str, int]) -> list[KnownNpc]:
+    rows = session.exec(
+        select(NpcState).where(
+            col(NpcState.run_id) == run_id, col(NpcState.known).is_(True)
+        )
+    ).all()
+    out: list[KnownNpc] = []
+    for ns in rows:
+        authored = session.get(Npc, ns.npc_id)
+        faction_id = authored.faction_id if authored else None
+        disp = ns.disposition + (faction_rep.get(faction_id, 0) if faction_id else 0)
+        out.append(
+            KnownNpc(
+                id=ns.npc_id,
+                name=ns.name or (authored.name if authored else ns.npc_id),
+                relationship=ns.relationship or _mood_label(disp),
+                disposition=disp,
+                last_seen=_name(session, Location, ns.current_location)
+                if ns.current_location else "Unknown",
+                note=ns.note,
+                alive=ns.alive,
+            )
+        )
+    out.sort(key=lambda k: (not k.alive, k.name))
+    return out
 
 
 def snapshot(session: Session, run_id: int) -> StateResponse:
@@ -136,7 +178,7 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
         ],
         npcs=[
             NpcBrief(
-                id=n.id, name=_name(session, Npc, n.id), alive=n.alive,
+                id=n.id, name=n.name or _name(session, Npc, n.id), alive=n.alive,
                 disposition=effective_disposition(n, state.faction_rep),
             )
             for n in state.npcs.values()
@@ -147,6 +189,7 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
             for fid, rep in sorted(state.faction_rep.items())
             if rep != 0
         ],
+        known_npcs=_known_npcs(session, run_id, state.faction_rep),
     )
 
 

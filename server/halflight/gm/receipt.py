@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from halflight.engine.results import TurnResult
-from halflight.models import Faction, Item, Location, Npc
+from halflight.models import Faction, Item, Location, Npc, NpcState
 
 Item_ = dict[str, str]
 
@@ -23,7 +23,20 @@ def _name(session: Session, model: type, id_: object) -> str:
     return name if isinstance(name, str) else str(id_)
 
 
-def build_receipt(session: Session, result: TurnResult) -> list[Item_]:
+def _npc_name(session: Session, run_id: int, npc_id: object) -> str:
+    """Authored NPC name, or a backstory contact's own name, else the id."""
+    if not npc_id:
+        return "someone"
+    authored = session.get(Npc, npc_id)
+    if authored is not None:
+        return authored.name
+    ns = session.get(NpcState, (run_id, npc_id))
+    if ns is not None and ns.name:
+        return ns.name
+    return str(npc_id)
+
+
+def build_receipt(session: Session, result: TurnResult, run_id: int) -> list[Item_]:
     items: list[Item_] = []
 
     for c in result.state_changes:
@@ -60,14 +73,16 @@ def build_receipt(session: Session, result: TurnResult) -> list[Item_]:
                 )
         else:  # an NPC
             if field == "hp" and int(delta) < 0:
-                items.append({"text": f"{_name(session, Npc, entity)} took {-int(delta)} damage",
-                              "tone": "neutral"})
+                items.append(
+                    {"text": f"{_npc_name(session, run_id, entity)} took {-int(delta)} damage",
+                     "tone": "neutral"}
+                )
 
     for ev in result.scene_events:
         detail = ev.detail
         if ev.kind == "npc_died":
             items.append(
-                {"text": f"{_name(session, Npc, detail.get('npc'))} killed", "tone": "bad"}
+                {"text": f"{_npc_name(session, run_id, detail.get('npc'))} killed", "tone": "bad"}
             )
         elif ev.kind == "player_died":
             items.append({"text": "You died", "tone": "bad"})

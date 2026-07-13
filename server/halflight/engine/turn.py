@@ -13,11 +13,23 @@ from sqlmodel import Session, col, select
 from halflight.engine.actions import Action
 from halflight.engine.dice import Dice, Roller
 from halflight.engine.gamestate import GameState
+from halflight.engine.lifepath import ContactSpec
 from halflight.engine.resolver import resolve
 from halflight.engine.results import TurnResult
 from halflight.engine.state import apply, load_state
 from halflight.models import Event, Inventory, Npc, PlayerState, Run
 from halflight.models.runtime import NpcState, utcnow
+
+# Backstory relationship -> starting disposition toward the player.
+RELATIONSHIP_DISPOSITION = {
+    "ally": 15, "contact": 8, "fearful": -4, "rival": -8, "enemy": -15, "missing": 0,
+}
+CONTACT_HP = 14  # generated contacts have no authored stat block
+
+
+def _contact_id(name: str) -> str:
+    slug = "".join(c if c.isalnum() else "_" for c in name.lower()).strip("_")
+    return f"contact_{slug}"
 
 
 def start_run(
@@ -31,6 +43,7 @@ def start_run(
     credits: int = 0,
     inventory: dict[str, int] | None = None,
     origin: str = "",
+    contacts: list[ContactSpec] | None = None,
 ) -> int:
     """Create a run: player state, starting inventory, and npc_state for every NPC."""
     run = Run(
@@ -61,6 +74,21 @@ def start_run(
                 current_location=npc.home_location_id or start_location,
             )
         )
+
+    seen: set[str] = set()
+    for c in contacts or []:
+        cid = _contact_id(c.name)
+        if cid in seen:
+            continue
+        seen.add(cid)
+        session.add(
+            NpcState(
+                run_id=run_id, npc_id=cid, hp=CONTACT_HP, alive=c.relationship != "missing",
+                disposition=RELATIONSHIP_DISPOSITION.get(c.relationship, 0),
+                current_location=c.location, name=c.name,
+                relationship=c.relationship, note=c.note, known=True,
+            )
+        )
     session.commit()
     return run_id
 
@@ -70,6 +98,7 @@ def take_turn(
 ) -> TurnResult:
     dice = dice or Dice()
     state = load_state(session, run_id)
+    _mark_known(session, run_id, list(state.npcs))
     result = resolve(state, action, dice)
     apply(session, run_id, result)
     _advance_time(session, run_id)
@@ -78,6 +107,15 @@ def take_turn(
     _end_run_if_dead(session, run_id, result)
     session.commit()
     return result
+
+
+def _mark_known(session: Session, run_id: int, npc_ids: list[str]) -> None:
+    """Anyone you share a scene with enters your Known-NPCs journal."""
+    for npc_id in npc_ids:
+        ns = session.get(NpcState, (run_id, npc_id))
+        if ns is not None and not ns.known:
+            ns.known = True
+            session.add(ns)
 
 
 def _advance_time(session: Session, run_id: int) -> None:

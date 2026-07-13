@@ -76,7 +76,10 @@
   .sheet-col { flex: 1; min-width: 190px; }
   .sheet-col h3 { color: var(--cyan); font-size: 12px; letter-spacing: .2em; margin: 0 0 .5rem; }
   .sub { color: var(--dim); font-size: 11px; letter-spacing: .15em; margin: .6rem 0 .2rem; }
-  .origin { color: var(--fg); font-size: 12px; line-height: 1.5; }
+  .origin { color: var(--ink); font-size: 12px; line-height: 1.5; }
+  .npc-meta { color: var(--dim); font-size: 11px; line-height: 1.4; margin: 0 0 .5rem; }
+  .npc-seen { color: var(--dim); opacity: .8; }
+  .cg-recap-contact { color: var(--cyan); }
   .row { display: flex; justify-content: space-between; gap: 1rem; padding: .1rem 0; }
   .row .k { color: var(--ink); } .row .v { color: var(--dim); }
   .row .v.neg { color: var(--blood); } .row .v.pos { color: var(--ok); }
@@ -134,7 +137,10 @@
       <h3>STATUS</h3><div id="sheet-status"></div>
       <h3 style="margin-top:1rem">STATS</h3><div id="sheet-stats"></div>
     </div>
-    <div class="sheet-col"><h3>SURROUNDINGS</h3><div id="sheet-here"></div></div>
+    <div class="sheet-col">
+      <h3>SURROUNDINGS</h3><div id="sheet-here"></div>
+      <h3 style="margin-top:1rem">KNOWN PEOPLE</h3><div id="sheet-known"></div>
+    </div>
     <div class="sheet-col">
       <h3>INVENTORY</h3><div id="sheet-inv"></div>
       <h3 style="margin-top:1rem">ORIGIN</h3><div id="sheet-origin"></div>
@@ -234,7 +240,9 @@ function renderRecap(result) {
     h += `<div class="cg-recap-step">
       <div class="cg-recap-head">${esc(b.step_title)} — <b>${esc(b.option_name)}</b></div>
       <div class="cg-recap-text">${esc(b.text)}</div>
-      <div class="cg-recap-sum ${cls}">${esc(b.summary)}</div></div>`;
+      <div class="cg-recap-sum ${cls}">${esc(b.summary)}` +
+      (b.contact ? ` · <span class="cg-recap-contact">Contact: ${esc(b.contact)}</span>` : '') +
+      `</div></div>`;
   }
   const order = ['muscle','nerve','wits','tech','streetwise','presence'];
   h += `<div class="cg-final">You end up in <b style="color:var(--amber)">${esc(s.location_name || s.location_id)}</b>.<br>` +
@@ -285,6 +293,17 @@ function renderState(s) {
     '<div class="sub">EXITS</div>' + exits +
     '<div class="sub">PEOPLE HERE</div>' + npcs +
     (standing ? '<div class="sub">STANDING</div>' + standing : '');
+
+  const known = (s.known_npcs || []).map(n => {
+    const d = n.disposition, cls = d < 0 ? 'neg' : (d > 0 ? 'pos' : '');
+    const rel = row((n.name || n.id) + (n.alive ? '' : ' (dead)'), esc(n.relationship || ''), cls);
+    const meta = '<div class="npc-meta">' +
+      (n.note ? esc(n.note) + ' ' : '') +
+      '<span class="npc-seen">last seen: ' + esc(n.last_seen || 'Unknown') + '</span></div>';
+    return rel + meta;
+  }).join('');
+  document.getElementById('sheet-known').innerHTML =
+    known || '<div class="empty">no one yet</div>';
 
   const inv = (s.inventory||[]).map(i => row(i.name + (i.quantity>1 ? ' ×'+i.quantity : ''), i.kind)).join('');
   document.getElementById('sheet-inv').innerHTML = inv || '<div class="empty">empty</div>';

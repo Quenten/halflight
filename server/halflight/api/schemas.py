@@ -49,6 +49,16 @@ class ExitBrief(BaseModel):
     name: str
 
 
+class KnownNpc(BaseModel):
+    id: str
+    name: str
+    relationship: str  # ally/enemy/fearful/... for contacts; a mood label for met NPCs
+    disposition: int
+    last_seen: str  # location name, or "Unknown"
+    note: str | None
+    alive: bool
+
+
 class ItemBrief(BaseModel):
     id: str
     name: str
@@ -97,6 +107,7 @@ class BuildStepOut(BaseModel):
     outcome_kind: str
     text: str
     summary: str
+    contact: str | None = None  # e.g. "Corva (enemy)"
 
 
 class StateResponse(BaseModel):
@@ -119,6 +130,7 @@ class StateResponse(BaseModel):
     npcs: list[NpcBrief]
     inventory: list[ItemBrief]
     standing: list[FactionStanding]
+    known_npcs: list[KnownNpc]
 
 
 class ChargenResult(BaseModel):

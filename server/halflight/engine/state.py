@@ -51,7 +51,7 @@ def load_state(session: Session, run_id: int) -> GameState:
         authored = session.get(Npc, ns.npc_id)
         npcs[ns.npc_id] = NpcView(
             id=ns.npc_id,
-            name=authored.name if authored else ns.npc_id,
+            name=ns.name or (authored.name if authored else ns.npc_id),
             hp=ns.hp,
             stats=dict(authored.stats) if authored else {},
             location_id=ns.current_location,

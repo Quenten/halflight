@@ -70,7 +70,12 @@ class NpcState(SQLModel, table=True):
     hp: int
     alive: bool = True
     disposition: int = 0
-    current_location: str
+    current_location: str  # "" = whereabouts unknown (backstory contacts not yet placed)
+    # Generated backstory contacts have no authored Npc row; they carry their own identity.
+    name: str | None = None
+    relationship: str | None = None  # ally | enemy | fearful | rival | missing | contact
+    note: str | None = None
+    known: bool = False  # surfaced in the player's Known-NPCs journal (contacts + met NPCs)
 
 
 class FactionRep(SQLModel, table=True):
