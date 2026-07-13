@@ -13,7 +13,7 @@ from sqlmodel import Session, col, select
 
 from .conftest import FakeEmbedder
 
-# The real vault has several Saltline NPCs (marrow, vosk, maddox); vault_mini doesn't.
+# The real vault has several Keelrat NPCs (rook, bosun_grey, mira); vault_mini doesn't.
 REPO_VAULT = Path(__file__).parents[2] / "vault"
 STATS = {"muscle": 10, "nerve": 10, "wits": 10, "tech": 10, "streetwise": 10, "presence": 10}
 
@@ -21,20 +21,20 @@ STATS = {"muscle": 10, "nerve": 10, "wits": 10, "tech": 10, "streetwise": 10, "p
 def test_gossip_spreads_within_faction(session: Session, fake_embedder: FakeEmbedder) -> None:
     run_ingest(REPO_VAULT, session, fake_embedder)
     run_id = start_run(
-        session, character_name="Vex", start_location="loc_saltgate", stats=STATS, hp=15
+        session, character_name="Vex", start_location="loc_rings_lower", stats=STATS, hp=15
     )
 
-    marrow = session.get(Npc, "npc_marrow")
-    assert marrow is not None and marrow.faction_id == "fac_saltline"
+    rook = session.get(Npc, "npc_rook")
+    assert rook is not None and rook.faction_id == "fac_keelrats"
 
     event = Event(
-        run_id=run_id, turn_no=1, significance=2, location_id="loc_ashwell",
-        witnesses=["npc_marrow"], ts=utcnow(),
+        run_id=run_id, turn_no=1, significance=2, location_id="loc_scrapmarket",
+        witnesses=["npc_rook"], ts=utcnow(),
     )
     session.add(event)
     session.commit()
     session.add(
-        NpcMemory(run_id=run_id, npc_id="npc_marrow", event_id=event.id, how_known="witnessed",
+        NpcMemory(run_id=run_id, npc_id="npc_rook", event_id=event.id, how_known="witnessed",
                   ts=utcnow())
     )
     session.commit()
@@ -48,24 +48,24 @@ def test_gossip_spreads_within_faction(session: Session, fake_embedder: FakeEmbe
         )
     ).all()
     assert told
-    # Word reached other Saltline NPCs, not the original witness.
+    # Word reached other Keelrat NPCs, not the original witness.
     for m in told:
-        assert m.npc_id != "npc_marrow"
+        assert m.npc_id != "npc_rook"
         peer = session.get(Npc, m.npc_id)
-        assert peer is not None and peer.faction_id == "fac_saltline"
+        assert peer is not None and peer.faction_id == "fac_keelrats"
 
 
 def test_gossip_is_rate_limited(session: Session, fake_embedder: FakeEmbedder) -> None:
     run_ingest(REPO_VAULT, session, fake_embedder)
     run_id = start_run(
-        session, character_name="Vex", start_location="loc_saltgate", stats=STATS, hp=15
+        session, character_name="Vex", start_location="loc_rings_lower", stats=STATS, hp=15
     )
-    event = Event(run_id=run_id, turn_no=1, significance=2, location_id="loc_ashwell",
-                  witnesses=["npc_marrow"], ts=utcnow())
+    event = Event(run_id=run_id, turn_no=1, significance=2, location_id="loc_scrapmarket",
+                  witnesses=["npc_rook"], ts=utcnow())
     session.add(event)
     session.commit()
     session.add(
-        NpcMemory(run_id=run_id, npc_id="npc_marrow", event_id=event.id, how_known="witnessed",
+        NpcMemory(run_id=run_id, npc_id="npc_rook", event_id=event.id, how_known="witnessed",
                   ts=utcnow())
     )
     session.commit()

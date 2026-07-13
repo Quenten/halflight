@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from halflight.engine.dice import Roller
 
-DEFAULT_START = "loc_saltgate"
+DEFAULT_START = "loc_rings_lower"
 
 
 @dataclass
@@ -76,26 +76,26 @@ CLASSES: list[ClassDef] = [
     ClassDef(
         id="enforcer", name="Enforcer", hp=24, credits=40,
         stats={"muscle": 14, "nerve": 12, "wits": 9, "tech": 8, "streetwise": 11, "presence": 10},
-        items=["itm_rail_maul", "itm_flak_vest", "itm_stimshot"],
-        blurb="You break what needs breaking. The Saltline pays for that, when it pays.",
+        items=["itm_charter_sidearm", "itm_riotshield", "itm_stimpatch"],
+        blurb="You break what needs breaking. Warden or Keelrat, the work's the same and the pay's never enough.",
     ),
     ClassDef(
         id="wirehead", name="Wirehead", hp=16, credits=50,
         stats={"muscle": 8, "nerve": 10, "wits": 14, "tech": 15, "streetwise": 10, "presence": 9},
-        items=["itm_slug_pistol", "itm_relay_key"],
-        blurb="The dead machines still talk. You're one of the few who bothers to listen.",
+        items=["itm_toolkit", "itm_derringer"],
+        blurb="The dead machines still talk, and STEWARD loudest of all. You're one of the few who bothers to listen.",
     ),
     ClassDef(
         id="fixer", name="Fixer", hp=18, credits=150,
         stats={"muscle": 9, "nerve": 12, "wits": 12, "tech": 10, "streetwise": 15, "presence": 14},
-        items=["itm_ledger_chit", "itm_slug_pistol"],
-        blurb="Everyone owes someone. You keep the ledger, and the ledger keeps you.",
+        items=["itm_lockpicks", "itm_derringer"],
+        blurb="Everyone owes someone. You keep the ledger, and the ledger keeps you breathing.",
     ),
     ClassDef(
-        id="chrome_rat", name="Chrome Rat", hp=20, credits=30,
+        id="chrome_rat", name="Scrapper", hp=20, credits=30,
         stats={"muscle": 11, "nerve": 13, "wits": 12, "tech": 11, "streetwise": 14, "presence": 8},
-        items=["itm_shiv", "itm_stimshot", "itm_scrap_bundle"],
-        blurb="The Undervault raised you. It taught you to run, to hide, and to take.",
+        items=["itm_keelblade", "itm_stimpatch", "itm_scrapbundle"],
+        blurb="The underdecks raised you. They taught you to run, to hide, and to take.",
     ),
 ]
 
@@ -122,13 +122,13 @@ STEPS: list[Step] = [
     Step(
         id="upbringing", title="UPBRINGING", prompt="Where did you come up?", rolls=False,
         options=[
-            Option("sump", "The sump tunnels", "Survival instinct. Hidden routes.",
+            Option("sump", "The Cargo Fathoms", "Flooded holds, salvage, and the deep dark.",
                    "+1 streetwise", base=Effect(dstats={"streetwise": 1})),
-            Option("crest", "A Crest arcology", "Privilege, then the fall.",
+            Option("crest", "The Bridgeworks", "Charter privilege — then the fall from it.",
                    "+1 presence", base=Effect(dstats={"presence": 1})),
-            Option("crew", "A syndicate crew", "Loyalty was survival.",
+            Option("crew", "A Keelrat crew", "Loyalty was survival.",
                    "+1 muscle", base=Effect(dstats={"muscle": 1})),
-            Option("offworld", "Offworld, inbound", "You came here chasing something.",
+            Option("offworld", "Thawed from the ice", "You woke from the Vaultwell with the world already old.",
                    "+1 nerve", base=Effect(dstats={"nerve": 1})),
         ],
     ),
@@ -150,8 +150,8 @@ STEPS: list[Step] = [
                 _neg("Something in you didn't heal right. The shakes come at bad times.", nerve=-1, hp=-4),
             ]),
             Option("ambition", "Ambition", "You reached too high.", "±presence", outcomes=[
-                _pos("The scheme paid. You made money and made enemies, and the money was worth it.", presence=1, cr=60),
-                _neu("A complicated outcome. Made some money, made some enemies. Broke even.", cr=20),
+                _pos("The scheme paid. You made chits and made enemies, and the chits were worth it.", presence=1, cr=60),
+                _neu("A complicated outcome. Made some chits, made some enemies. Broke even.", cr=20),
                 _neg("It collapsed and took your name with it. You're starting over.", presence=-1, cr=-30),
             ]),
             Option("discovery", "Discovery", "You learned something dangerous.", "±wits ±tech", outcomes=[
@@ -164,10 +164,10 @@ STEPS: list[Step] = [
     Step(
         id="ran_with", title="WHO YOU RAN WITH", prompt="Who pulled you into their orbit?", rolls=True,
         options=[
-            Option("fixer", "A Saltline fixer", "Work for hire, no questions.", "±streetwise", outcomes=[
+            Option("fixer", "A Scrapmarket fixer", "Work for hire, no questions.", "±streetwise", outcomes=[
                 _pos("The work was steady and the fixer square with you. You banked a stake.",
-                     ContactSpec("Corva", "ally", "A Saltline fixer who dealt square with you. Owes you nothing, "
-                                 "but she takes your calls."), streetwise=1, cr=50),
+                     ContactSpec("Corva", "ally", "A Scrapmarket fixer who dealt square with you. Owes you "
+                                 "nothing, but she takes your calls."), streetwise=1, cr=50),
                 _neu("Jobs came and went. You're neither ahead nor behind.", streetwise=0),
                 _neg("The fixer set you up as the fall. You did time; they vanished.",
                      ContactSpec("Corva", "enemy", "Set you up as the fall and vanished while you did the time."),
@@ -175,19 +175,19 @@ STEPS: list[Step] = [
             ]),
             Option("gutter", "A gutter crew", "Family, until it wasn't.", "±muscle", outcomes=[
                 _pos("They had your back and you had theirs. You came out tougher and connected.",
-                     ContactSpec("Pell", "ally", "Ran the gutter crew you came up in. Still owes you a couple of "
+                     ContactSpec("Marn", "ally", "Ran the gutter crew you came up in. Still owes you a couple of "
                                  "favors and a share."), muscle=1, cr=20),
                 _neu("You ran with them a while. It ended quietly.", muscle=1),
                 _neg("It ended in blood, and not theirs alone. You still owe for it.",
-                     ContactSpec("Pell", "rival", "Your old crew boss. It ended in blood and you still owe for "
+                     ContactSpec("Marn", "rival", "Your old crew boss. It ended in blood and you still owe for "
                                  "it."), muscle=-1, hp=-4),
             ]),
-            Option("handler", "A Combine handler", "Clean work, dirty hands.", "±tech", outcomes=[
-                _pos("The Combine paid well and taught you their tools. You kept the tools.", tech=1, cr=60),
+            Option("handler", "A Directorate handler", "Clean work, dirty hands.", "±tech", outcomes=[
+                _pos("The Directorate paid well and taught you their systems. You kept the access.", tech=1, cr=60),
                 _neu("Clean jobs, clean pay, no loyalty either way.", tech=1),
-                _neg("They used you up and cut you loose with a ledger-tag you can't clear.",
-                     ContactSpec("Dossen", "enemy", "The Combine handler who used you up and cut you loose with a "
-                                 "ledger-tag you can't clear."), tech=-1, cr=-30),
+                _neg("They used you up and cut you loose with a debt you can't clear.",
+                     ContactSpec("Dossen", "enemy", "The Directorate handler who used you up and cut you loose "
+                                 "with a debt you can't clear."), tech=-1, cr=-30),
             ]),
             Option("alone", "Nobody", "You worked alone. Still do.", "±streetwise ±nerve", outcomes=[
                 _pos("No one to sell you out, no cut to pay. You kept everything you earned.", streetwise=1, nerve=1, cr=40),
@@ -199,32 +199,32 @@ STEPS: list[Step] = [
     Step(
         id="last_job", title="THE LAST JOB", prompt="What was the last job before you ended up here?", rolls=True,
         options=[
-            Option("salvage", "A salvage run past the Seam", "The score to set you up.", "±wits",
-                   start_location="loc_walker_bay", outcomes=[
-                _pos("You came back with something the Dredge would kill for, and the scrip to match.", wits=1, cr=80),
+            Option("salvage", "A salvage run toward the Deep Hull", "The score to set you up.", "±wits",
+                   start_location="loc_cargofathoms", outcomes=[
+                _pos("You came back with something the Deep Crew would kill for, and the chits to match.", wits=1, cr=80),
                 _neu("You came back. Half the crew didn't. The haul barely covered the loss.", wits=1),
-                _neg("The Reach took the haul and two fingers. You limped back with nothing.", wits=-1, hp=-6, cr=-20),
+                _neg("The Deep Hull took the haul and two fingers. You limped back with nothing.", wits=-1, hp=-6, cr=-20),
             ]),
             Option("protection", "A protection job", "Someone needed you. You showed up.", "±nerve ±muscle",
-                   start_location="loc_ashwell", outcomes=[
+                   start_location="loc_rings_lower", outcomes=[
                 _pos("You kept them alive and they paid what they promised. Rare, that.",
                      ContactSpec("Dr. Sabec", "ally", "You kept them alive. They run a clinic here and the debt "
-                                 "runs your way now.", location="loc_ashwell"), nerve=1, muscle=1, cr=40),
+                                 "runs your way now.", location="loc_rings_lower"), nerve=1, muscle=1, cr=40),
                 _neu("You held the line. It cost more than it paid, but you held it.", nerve=1),
                 _neg("They died on your watch. You carry that, and the debt that came with it.",
                      ContactSpec("Dr. Sabec", "missing", "Died on your watch — or was taken. You never found the "
                                  "body, and you still carry it."), muscle=-1, hp=-6),
             ]),
             Option("double_cross", "A double-cross", "You sold out the people who trusted you.", "±presence",
-                   start_location="loc_drip_market", outcomes=[
+                   start_location="loc_scrapmarket", outcomes=[
                 _pos("The betrayal paid clean and no one traced it back. Your conscience is negotiable.", presence=1, cr=70),
-                _neu("You got out with the scrip and a name people spit. Worth it, mostly.", cr=30, presence=-1),
-                _neg("They found out. You barely made the Undervault ahead of them.",
+                _neu("You got out with the chits and a name people spit. Worth it, mostly.", cr=30, presence=-1),
+                _neg("They found out. You barely made the lower decks ahead of them.",
                      ContactSpec("Rhet", "enemy", "You sold out their crew. They found out, and they're still "
                                  "looking."), presence=-1, hp=-4, cr=-10),
             ]),
             Option("runner", "A runner", "You ran from everything you'd built.", "±nerve",
-                   start_location="loc_saltgate", outcomes=[
+                   start_location="loc_rings_lower", outcomes=[
                 _pos("You got out clean and early, and took a stake with you. Smart.", nerve=1, cr=40),
                 _neu("You ran. You're here. That's all that matters now.", nerve=1),
                 _neg("You ran with nothing but the debt, and it followed you down.", nerve=-1, cr=-30),

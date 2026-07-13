@@ -30,12 +30,12 @@ def test_tables_are_well_formed() -> None:
 
 def test_positive_rolls_help() -> None:
     b = resolve_build("enforcer", CHOICES, FixedRoller(20))  # everything positive
-    assert "itm_rail_maul" in b.inventory
+    assert "itm_charter_sidearm" in b.inventory
     assert b.stats["muscle"] == 15  # enforcer 14 + crew upbringing +1
     assert b.credits > 40  # base 40 + positive scrip
     assert len(b.backstory) == 4
     assert all(step.outcome_kind in ("chosen", "positive") for step in b.backstory)
-    assert b.start_location == "loc_walker_bay"  # last_job "salvage" sets where you end up
+    assert b.start_location == "loc_cargofathoms"  # last_job "salvage" sets where you end up
 
 
 def test_negative_rolls_hurt_but_hp_clamped() -> None:

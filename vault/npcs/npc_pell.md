@@ -1,26 +1,20 @@
 ---
 id: npc_pell
 type: npc
-name: Pell
-faction: null
-role: reactor tech
-location: loc_reactor_row
+name: Archivist Pell
+faction: fac_directorate
+role: archivist
+location: loc_charterhall
 disposition_default: 0
-stats: {muscle: 10, nerve: 16, wits: 15, tech: 15, streetwise: 9, presence: 8}
-hp: 14
-schedule: {day: loc_reactor_row, night: loc_reactor_row}
+stats: {muscle: 10, nerve: 10, wits: 15, tech: 12, streetwise: 10, presence: 9}
+hp: 11
 alive: true
 ---
 
-Nurses the off-ledger cores on [[loc_reactor_row]] for the [[fac_saltline]]. Pale,
-sharp, coughs in a way that says the dosimeters are right and the paint over them
-is a lie. Pell knows exactly how close each reactor runs to failure, and that
-knowledge is the only leverage keeping her breathing.
+Keeper of the old logs — the ones that hint [[lore_steward|STEWARD]] grounded the ship on purpose. He knows more than the Directorate wants known.
 
-**Speech:** clipped, exhausted, gallows-dry. Counts in half-lives. Doesn't expect
-to be around long and has made an uneasy peace with it.
+Speech: hushed, precise, always listening for the door.
 
 ## Secret
 
-The number-three core is past saving. Pell has been quietly rerouting load to hide
-it from the Saltline, buying weeks. When it goes, it takes the Row with it.
+He has read the uncorrupted deceleration logs. They say the grounding was deliberate, and he has never told a soul.
