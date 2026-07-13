@@ -66,16 +66,23 @@
   .cg-final { text-align: center; color: var(--cyan); margin: 1rem 0; font-size: 13px; }
   #cg-begin { display: block; margin: 1rem auto 0; padding: .6rem 1.3rem; }
   .empty { color: var(--dim); font-style: italic; text-align: center; }
-  .cg-outcome { max-width: 600px; margin: 1.5rem auto 0; text-align: center; }
-  .cg-oc-choice { color: var(--dim); letter-spacing: .12em; font-size: 13px; margin-bottom: .7rem; }
-  .cg-oc-choice b { color: var(--ink); }
-  .cg-oc-banner { font-weight: 700; letter-spacing: .2em; font-size: 13px; margin-bottom: 1rem; color: var(--dim); }
+  .cg-hdr { text-align: center; color: var(--dim); letter-spacing: .1em; font-size: 13px; margin-bottom: 1.4rem; }
+  .cg-hdr b { color: var(--amber); }
+  .cg-step { border-top: 1px solid var(--edge); padding-top: 1.3rem; margin-top: 1.4rem; }
+  .cg-step:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+  .cg-step-head { color: var(--amber); letter-spacing: .2em; font-size: 12px; margin-bottom: .3rem; }
+  .cg-step .cg-prompt { text-align: left; margin-bottom: .8rem; }
+  .cg-card.chosen { border-color: var(--ok); cursor: default; }
+  .cg-card.chosen:hover { background: var(--panel); }
+  .cg-die { text-align: center; font-size: 2.6rem; line-height: 1; margin: .9rem 0 .4rem; color: var(--amber); }
+  .cg-die.pos { color: var(--ok); } .cg-die.neg { color: var(--blood); }
+  .cg-oc-banner { text-align: center; font-weight: 700; letter-spacing: .2em; font-size: 12px; color: var(--dim); margin-bottom: .8rem; }
   .cg-oc-banner.pos { color: var(--ok); } .cg-oc-banner.neg { color: var(--blood); }
-  .cg-oc-text { color: var(--ink); line-height: 1.65; margin-bottom: .9rem; }
-  .cg-oc-sum { color: var(--dim); font-size: 13px; margin-bottom: 1.4rem; }
+  .cg-oc-text { color: var(--ink); line-height: 1.6; border-left: 2px solid var(--edge); padding-left: .9rem; margin: .4rem 0 .6rem; }
+  .cg-oc-sum { color: var(--dim); font-size: 13px; margin-bottom: .4rem; }
   .cg-oc-sum.pos { color: var(--ok); } .cg-oc-sum.neg { color: var(--blood); }
-  #cg-continue { display: block; margin: 0 auto; padding: .6rem 1.4rem; }
-  .cg-final-contacts { max-width: 440px; margin: 1.2rem auto 0; text-align: left; }
+  #cg-begin { display: block; margin: 1.2rem auto 0; padding: .6rem 1.4rem; }
+  .cg-final-contacts { margin: 1.2rem 0 0; text-align: left; }
   .cg-contact-row { color: var(--ink); font-size: 13px; margin: .3rem 0; }
   .stat-note { color: var(--dim); font-size: 11px; }
   @media (max-width: 600px) { .cg-grid { grid-template-columns: 1fr; } }
@@ -209,24 +216,8 @@ function renderClasses() {
   cgBody.querySelectorAll('.cg-card').forEach(elm => elm.addEventListener('click', () => {
     build.name = document.getElementById('cg-name-input').value || 'Drifter';
     build.classId = elm.dataset.cid; build.choices = {}; build.outcomes = {};
-    stepIx = 0; renderStep();
+    renderOrigin();
   }));
-}
-
-function renderStep() {
-  const step = CG.steps[stepIx];
-  cgProg.textContent = `${stepIx+1} / ${CG.steps.length}  ·  ${step.title}`;
-  let h = `<div class="cg-prompt">${esc(step.prompt)}</div><div class="cg-grid">`;
-  for (const o of step.options) {
-    const hint = o.hint || (step.rolls ? 'the dice decide' : '');
-    h += `<div class="cg-card" data-oid="${o.id}">
-      <div class="cg-card-title">${esc(o.name)}</div>
-      <div class="cg-card-blurb">${esc(o.blurb)}</div>
-      <div class="cg-card-hint">${esc(hint)}</div></div>`;
-  }
-  cgBody.innerHTML = h + '</div>';
-  cgBody.querySelectorAll('.cg-card').forEach(elm => elm.addEventListener('click', () =>
-    pickOption(step, elm.dataset.oid)));
 }
 
 const BANNERS = {
@@ -235,59 +226,91 @@ const BANNERS = {
   neutral:  ['AN EVEN HAND', ''],
   chosen:   ['', ''],
 };
+const DICE = { positive: '⚅', neutral: '⚃', negative: '⚁' };  // ⚅ ⚃ ⚁
 
-async function pickOption(step, optionId) {
+// One continuous vertical page: each step's options, then its revealed outcome
+// inline below, then the next step — no click-through between steps.
+function renderOrigin() {
+  cgProg.textContent = 'YOUR STORY';
+  const c = CG.classes.find(x => x.id === build.classId) || {};
+  cgBody.innerHTML =
+    `<div class="cg-hdr"><b>${esc(c.name || '')}</b> · ${esc(build.name)} · HP ${c.hp} · ${c.credits} scrip</div>` +
+    '<div id="cg-steps"></div>';
+  appendStep(0);
+}
+
+function appendStep(ix) {
+  const step = CG.steps[ix];
+  const div = document.createElement('div');
+  div.className = 'cg-step'; div.id = 'cg-step-' + ix;
+  let h = `<div class="cg-step-head">${ix+1} / ${CG.steps.length} · ${esc(step.title)}</div>
+    <div class="cg-prompt">${esc(step.prompt)}</div><div class="cg-options cg-grid">`;
+  for (const o of step.options) {
+    const hint = o.hint || (step.rolls ? 'the dice decide' : '');
+    h += `<div class="cg-card" data-oid="${o.id}">
+      <div class="cg-card-title">${esc(o.name)}</div>
+      <div class="cg-card-blurb">${esc(o.blurb)}</div>
+      <div class="cg-card-hint">${esc(hint)}</div></div>`;
+  }
+  div.innerHTML = h + '</div>';
+  document.getElementById('cg-steps').appendChild(div);
+  div.querySelectorAll('.cg-card').forEach(elm => elm.addEventListener('click', () =>
+    answerStep(ix, elm.dataset.oid)));
+  div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function answerStep(ix, optionId) {
+  const step = CG.steps[ix];
+  const div = document.getElementById('cg-step-' + ix);
+  if (build.choices[step.id]) return;  // already answered
   build.choices[step.id] = optionId;
   const opt = step.options.find(o => o.id === optionId);
-  cgBody.innerHTML = '<div class="empty">the dice turn…</div>';
+  div.querySelector('.cg-options').innerHTML = '<div class="empty">the dice turn…</div>';
   let res = null;
   try {
     const r = await fetch('/chargen/roll', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({step_id: step.id, option_id: optionId})});
     if (r.ok) res = await r.json();
   } catch (e) {}
-  if (!res) { advanceStep(); return; }  // fall through if the roll call fails
+  if (!res) res = { kind: 'chosen', text: opt.blurb, summary: '', contact: null };
   if (res.kind !== 'chosen') build.outcomes[step.id] = res.kind;
-  renderOutcome(step, opt, res);
+  renderAnswered(div, opt, res);
+  if (ix + 1 < CG.steps.length) appendStep(ix + 1); else appendFinal();
 }
 
-function renderOutcome(step, opt, res) {
+function renderAnswered(div, opt, res) {
   const [banner, cls] = BANNERS[res.kind] || ['', ''];
-  cgProg.textContent = `${stepIx+1} / ${CG.steps.length}  ·  ${step.title}`;
-  let h = `<div class="cg-outcome">
-    <div class="cg-oc-choice">${esc(step.title)} — <b>${esc(opt.name)}</b></div>`;
-  if (banner) h += `<div class="cg-oc-banner ${cls}">${banner}</div>`;
-  h += `<div class="cg-oc-text">${esc(res.text)}</div>
-    <div class="cg-oc-sum ${cls}">${esc(res.summary)}` +
-    (res.contact ? ` · <span class="cg-recap-contact">Contact: ${esc(res.contact)}</span>` : '') +
-    `</div>`;
-  const last = stepIx >= CG.steps.length - 1;
-  h += `<button id="cg-continue">${last ? 'see where it leaves you ›' : 'continue ›'}</button></div>`;
-  cgBody.innerHTML = h;
-  document.getElementById('cg-continue').addEventListener('click', advanceStep);
+  const die = DICE[res.kind] ? `<div class="cg-die ${cls}">${DICE[res.kind]}</div>` : '';
+  div.querySelector('.cg-options').outerHTML =
+    `<div class="cg-card chosen">
+       <div class="cg-card-title">${esc(opt.name)}</div>
+       <div class="cg-card-blurb">${esc(opt.blurb)}</div>` +
+       (opt.hint ? `<div class="cg-card-hint">${esc(opt.hint)}</div>` : '') +
+     `</div>` +
+     die +
+     (banner ? `<div class="cg-oc-banner ${cls}">${banner}</div>` : '') +
+     (res.text && res.text !== opt.blurb ? `<div class="cg-oc-text">${esc(res.text)}</div>` : '') +
+     (res.summary
+       ? `<div class="cg-oc-sum ${cls}">${esc(res.summary)}` +
+         (res.contact ? ` · <span class="cg-recap-contact">Contact: ${esc(res.contact)}</span>` : '') +
+         `</div>`
+       : '');
 }
 
-function advanceStep() {
-  stepIx++;
-  if (stepIx >= CG.steps.length) finishChargen(); else renderStep();
-}
-
-async function finishChargen() {
-  cgProg.textContent = 'THE DICE SETTLE';
-  cgBody.innerHTML = '<div class="empty">the dice settle…</div>';
+async function appendFinal() {
   let result;
   try {
     const r = await fetch('/runs/chargen', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({character_name: build.name, class_id: build.classId,
         choices: build.choices, outcomes: build.outcomes})});
-    if (!r.ok) { cgBody.innerHTML = '<div class="empty">could not start: ' + r.status + '</div>'; return; }
+    if (!r.ok) { document.getElementById('cg-steps').insertAdjacentHTML('beforeend',
+      '<div class="empty">could not start: ' + r.status + '</div>'); return; }
     result = await r.json();
-  } catch (e) { cgBody.innerHTML = '<div class="empty">could not reach the server.</div>'; return; }
-  renderFinal(result.state);
-}
-
-function renderFinal(s) {
-  cgProg.textContent = 'YOUR STORY';
+  } catch (e) {
+    document.getElementById('cg-steps').insertAdjacentHTML('beforeend',
+      '<div class="empty">could not reach the server.</div>'); return;
+  }
+  const s = result.state;
   const order = ['muscle','nerve','wits','tech','streetwise','presence'];
   const stats = s.stats || {};
   let h = `<div class="cg-final">You end up in <b style="color:var(--amber)">${esc(s.location_name || s.location_id)}</b>.<br>` +
@@ -300,8 +323,11 @@ function renderFinal(s) {
       '</div>';
   }
   h += '<button id="cg-begin">enter the halflight</button>';
-  cgBody.innerHTML = h;
+  const div = document.createElement('div');
+  div.className = 'cg-step'; div.innerHTML = h;
+  document.getElementById('cg-steps').appendChild(div);
   document.getElementById('cg-begin').addEventListener('click', () => enterGame(s));
+  div.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function enterGame(s) {
