@@ -39,6 +39,18 @@ def _npc_name(session: Session, run_id: int, npc_id: object) -> str:
 def build_receipt(session: Session, result: TurnResult, run_id: int) -> list[Item_]:
     items: list[Item_] = []
 
+    # The dice, shown plainly: raw d20, stat modifier, total vs the difficulty.
+    if result.roll_base is not None and result.difficulty is not None:
+        mod = result.roll_mod or 0
+        total = result.roll if result.roll is not None else result.roll_base + mod
+        tone = "good" if result.outcome == "success" else (
+            "bad" if result.outcome == "failure" else "neutral"
+        )
+        items.append(
+            {"text": f"Roll {result.roll_base} {mod:+d} = {total} vs {result.difficulty}",
+             "tone": tone}
+        )
+
     for c in result.state_changes:
         entity, field, delta = c.entity, c.field, c.delta
         if entity == "player":

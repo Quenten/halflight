@@ -66,6 +66,18 @@
   .cg-final { text-align: center; color: var(--cyan); margin: 1rem 0; font-size: 13px; }
   #cg-begin { display: block; margin: 1rem auto 0; padding: .6rem 1.3rem; }
   .empty { color: var(--dim); font-style: italic; text-align: center; }
+  .cg-outcome { max-width: 600px; margin: 1.5rem auto 0; text-align: center; }
+  .cg-oc-choice { color: var(--dim); letter-spacing: .12em; font-size: 13px; margin-bottom: .7rem; }
+  .cg-oc-choice b { color: var(--ink); }
+  .cg-oc-banner { font-weight: 700; letter-spacing: .2em; font-size: 13px; margin-bottom: 1rem; color: var(--dim); }
+  .cg-oc-banner.pos { color: var(--ok); } .cg-oc-banner.neg { color: var(--blood); }
+  .cg-oc-text { color: var(--ink); line-height: 1.65; margin-bottom: .9rem; }
+  .cg-oc-sum { color: var(--dim); font-size: 13px; margin-bottom: 1.4rem; }
+  .cg-oc-sum.pos { color: var(--ok); } .cg-oc-sum.neg { color: var(--blood); }
+  #cg-continue { display: block; margin: 0 auto; padding: .6rem 1.4rem; }
+  .cg-final-contacts { max-width: 440px; margin: 1.2rem auto 0; text-align: left; }
+  .cg-contact-row { color: var(--ink); font-size: 13px; margin: .3rem 0; }
+  .stat-note { color: var(--dim); font-size: 11px; }
   @media (max-width: 600px) { .cg-grid { grid-template-columns: 1fr; } }
 
   /* Character sheet */
@@ -164,7 +176,7 @@ const creator = document.getElementById('creator');
 const cgBody = document.getElementById('cg-body');
 const cgProg = document.getElementById('cg-progress');
 let runId = null, busy = false;
-let CG = null, build = { name:'Drifter', classId:null, choices:{} }, stepIx = 0;
+let CG = null, build = { name:'Drifter', classId:null, choices:{}, outcomes:{} }, stepIx = 0;
 
 function scroll() { log.scrollTop = log.scrollHeight; }
 function el(cls, text) { const d = document.createElement('div'); d.className = cls;
@@ -178,7 +190,7 @@ async function openCreator() {
   creator.classList.remove('hidden');
   if (!CG) { try { const r = await fetch('/chargen'); CG = r.ok ? await r.json() : null; } catch(e){} }
   if (!CG || !CG.classes.length) { cgProg.textContent=''; cgBody.innerHTML = '<div class="empty">No world ingested — run the ingest command, then reload.</div>'; return; }
-  build = { name:'Drifter', classId:null, choices:{} }; stepIx = 0;
+  build = { name:'Drifter', classId:null, choices:{}, outcomes:{} }; stepIx = 0;
   renderClasses();
 }
 
@@ -196,7 +208,8 @@ function renderClasses() {
   cgBody.innerHTML = h + '</div>';
   cgBody.querySelectorAll('.cg-card').forEach(elm => elm.addEventListener('click', () => {
     build.name = document.getElementById('cg-name-input').value || 'Drifter';
-    build.classId = elm.dataset.cid; stepIx = 0; renderStep();
+    build.classId = elm.dataset.cid; build.choices = {}; build.outcomes = {};
+    stepIx = 0; renderStep();
   }));
 }
 
@@ -212,41 +225,80 @@ function renderStep() {
       <div class="cg-card-hint">${esc(hint)}</div></div>`;
   }
   cgBody.innerHTML = h + '</div>';
-  cgBody.querySelectorAll('.cg-card').forEach(elm => elm.addEventListener('click', () => {
-    build.choices[step.id] = elm.dataset.oid; stepIx++;
-    if (stepIx >= CG.steps.length) finishChargen(); else renderStep();
-  }));
+  cgBody.querySelectorAll('.cg-card').forEach(elm => elm.addEventListener('click', () =>
+    pickOption(step, elm.dataset.oid)));
+}
+
+const BANNERS = {
+  positive: ['FORTUNE FAVORS YOU', 'pos'],
+  negative: ['THE DICE TURN AGAINST YOU', 'neg'],
+  neutral:  ['AN EVEN HAND', ''],
+  chosen:   ['', ''],
+};
+
+async function pickOption(step, optionId) {
+  build.choices[step.id] = optionId;
+  const opt = step.options.find(o => o.id === optionId);
+  cgBody.innerHTML = '<div class="empty">the dice turn…</div>';
+  let res = null;
+  try {
+    const r = await fetch('/chargen/roll', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({step_id: step.id, option_id: optionId})});
+    if (r.ok) res = await r.json();
+  } catch (e) {}
+  if (!res) { advanceStep(); return; }  // fall through if the roll call fails
+  if (res.kind !== 'chosen') build.outcomes[step.id] = res.kind;
+  renderOutcome(step, opt, res);
+}
+
+function renderOutcome(step, opt, res) {
+  const [banner, cls] = BANNERS[res.kind] || ['', ''];
+  cgProg.textContent = `${stepIx+1} / ${CG.steps.length}  ·  ${step.title}`;
+  let h = `<div class="cg-outcome">
+    <div class="cg-oc-choice">${esc(step.title)} — <b>${esc(opt.name)}</b></div>`;
+  if (banner) h += `<div class="cg-oc-banner ${cls}">${banner}</div>`;
+  h += `<div class="cg-oc-text">${esc(res.text)}</div>
+    <div class="cg-oc-sum ${cls}">${esc(res.summary)}` +
+    (res.contact ? ` · <span class="cg-recap-contact">Contact: ${esc(res.contact)}</span>` : '') +
+    `</div>`;
+  const last = stepIx >= CG.steps.length - 1;
+  h += `<button id="cg-continue">${last ? 'see where it leaves you ›' : 'continue ›'}</button></div>`;
+  cgBody.innerHTML = h;
+  document.getElementById('cg-continue').addEventListener('click', advanceStep);
+}
+
+function advanceStep() {
+  stepIx++;
+  if (stepIx >= CG.steps.length) finishChargen(); else renderStep();
 }
 
 async function finishChargen() {
-  cgProg.textContent = 'THE DICE FALL';
-  cgBody.innerHTML = '<div class="empty">the dice turn…</div>';
+  cgProg.textContent = 'THE DICE SETTLE';
+  cgBody.innerHTML = '<div class="empty">the dice settle…</div>';
   let result;
   try {
     const r = await fetch('/runs/chargen', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({character_name: build.name, class_id: build.classId, choices: build.choices})});
+      body: JSON.stringify({character_name: build.name, class_id: build.classId,
+        choices: build.choices, outcomes: build.outcomes})});
     if (!r.ok) { cgBody.innerHTML = '<div class="empty">could not start: ' + r.status + '</div>'; return; }
     result = await r.json();
   } catch (e) { cgBody.innerHTML = '<div class="empty">could not reach the server.</div>'; return; }
-  renderRecap(result);
+  renderFinal(result.state);
 }
 
-function renderRecap(result) {
+function renderFinal(s) {
   cgProg.textContent = 'YOUR STORY';
-  const s = result.state;
-  let h = '';
-  for (const b of result.backstory) {
-    const cls = b.outcome_kind === 'positive' ? 'pos' : (b.outcome_kind === 'negative' ? 'neg' : '');
-    h += `<div class="cg-recap-step">
-      <div class="cg-recap-head">${esc(b.step_title)} — <b>${esc(b.option_name)}</b></div>
-      <div class="cg-recap-text">${esc(b.text)}</div>
-      <div class="cg-recap-sum ${cls}">${esc(b.summary)}` +
-      (b.contact ? ` · <span class="cg-recap-contact">Contact: ${esc(b.contact)}</span>` : '') +
-      `</div></div>`;
-  }
   const order = ['muscle','nerve','wits','tech','streetwise','presence'];
-  h += `<div class="cg-final">You end up in <b style="color:var(--amber)">${esc(s.location_name || s.location_id)}</b>.<br>` +
-    `HP ${s.hp} · ${s.credits} scrip · ` + order.map(k => `${k} ${s.stats[k]}`).join(' · ') + '</div>';
+  const stats = s.stats || {};
+  let h = `<div class="cg-final">You end up in <b style="color:var(--amber)">${esc(s.location_name || s.location_id)}</b>.<br>` +
+    `HP ${s.hp} · ${s.credits} scrip · ` + order.filter(k => k in stats).map(k => `${k} ${stats[k]}`).join(' · ') + '</div>';
+  const known = s.known_npcs || [];
+  if (known.length) {
+    h += '<div class="cg-final-contacts"><div class="sub">PEOPLE FROM YOUR PAST</div>' +
+      known.map(k => `<div class="cg-contact-row"><b>${esc(k.name)}</b> <span class="cg-recap-contact">${esc(k.relationship)}</span>` +
+        (k.note ? `<div class="npc-meta">${esc(k.note)}</div>` : '') + '</div>').join('') +
+      '</div>';
+  }
   h += '<button id="cg-begin">enter the halflight</button>';
   cgBody.innerHTML = h;
   document.getElementById('cg-begin').addEventListener('click', () => enterGame(s));
@@ -277,8 +329,13 @@ function renderState(s) {
     row('Shift', s.shift + (s.curfew ? ' (curfew)' : '')) + row('Turn', s.time_ticks);
   const order = ['muscle','nerve','wits','tech','streetwise','presence'];
   const stats = s.stats || {};
+  const base = s.stat_base || {};
   document.getElementById('sheet-stats').innerHTML =
-    order.filter(k => k in stats).map(k => row(k, stats[k])).join('') || '<div class="empty">—</div>';
+    order.filter(k => k in stats).map(k => {
+      const lp = (k in base) ? stats[k] - base[k] : 0;
+      const note = lp ? ` <span class="stat-note">(base ${base[k]}, ${lp>0?'+':''}${lp})</span>` : '';
+      return row(k, stats[k] + note);
+    }).join('') || '<div class="empty">—</div>';
 
   const exits = (s.exits||[]).map(e => row(e.name||e.id, 'go')).join('') || '<div class="empty">none</div>';
   const npcs = (s.npcs||[]).map(n => {

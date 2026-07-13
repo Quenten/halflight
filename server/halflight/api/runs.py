@@ -23,12 +23,21 @@ from halflight.api.schemas import (
     StartRunRequest,
     StateResponse,
     StepOut,
+    StepRollRequest,
+    StepRollResult,
     TurnRecord,
 )
 from halflight.engine.clock import shift_for
 from halflight.engine.dice import Dice
 from halflight.engine.gamestate import effective_disposition
-from halflight.engine.lifepath import CLASSES, STEPS, resolve_build
+from halflight.engine.lifepath import (
+    CLASSES,
+    STEPS,
+    get_class,
+    preview_step,
+    resolve_build,
+    summarize_effect,
+)
 from halflight.engine.state import load_state
 from halflight.engine.turn import start_run
 from halflight.models import Faction, Item, Location, Narration, Npc, NpcState, Run
@@ -63,10 +72,25 @@ def chargen_data(session: SessionDep) -> ChargenData:
     return ChargenData(classes=classes, steps=steps)
 
 
+@router.post("/chargen/roll", response_model=StepRollResult)
+def roll_chargen_step(req: StepRollRequest) -> StepRollResult:
+    """Roll one lifepath step so the creator can reveal its outcome on pick."""
+    outcome = preview_step(req.step_id, req.option_id, Dice())
+    if outcome is None:
+        raise HTTPException(status_code=404, detail="unknown step or option")
+    contact = (
+        f"{outcome.contact.name} ({outcome.contact.relationship})" if outcome.contact else None
+    )
+    return StepRollResult(
+        kind=outcome.kind, text=outcome.text,
+        summary=summarize_effect(outcome.effect), contact=contact,
+    )
+
+
 @router.post("/runs/chargen", response_model=ChargenResult)
 def create_run_chargen(req: ChargenRequest, session: SessionDep) -> ChargenResult:
     try:
-        build = resolve_build(req.class_id, req.choices, Dice())
+        build = resolve_build(req.class_id, req.choices, Dice(), req.outcomes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     origin = " ".join(b.text.strip() for b in build.backstory if b.text.strip())
@@ -172,6 +196,7 @@ def snapshot(session: Session, run_id: int) -> StateResponse:
         ended=run.ended_at is not None,
         cause_of_death=run.cause_of_death,
         stats=state.player.stats,
+        stat_base=(cls.stats if (cls := get_class(run.archetype)) else {}),
         exits=[
             ExitBrief(id=e, name=_name(session, Location, e))
             for e in state.location.connections

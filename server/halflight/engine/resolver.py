@@ -123,7 +123,9 @@ def _resolve_attack(state: GameState, action: Attack, dice: Roller) -> TurnResul
     events: list[SceneEvent] = []
     significance = 1
 
-    atk = dice.d20() + stat_mod(state.player.stat("muscle"))
+    atk_base = dice.d20()
+    atk_mod = stat_mod(state.player.stat("muscle"))
+    atk = atk_base + atk_mod
     defense = BASE_DEFENSE + stat_mod(npc.stat("nerve"))
     npc_hp = npc.hp
 
@@ -167,6 +169,8 @@ def _resolve_attack(state: GameState, action: Attack, dice: Roller) -> TurnResul
         action=action,
         valid=True,
         roll=atk,
+        roll_base=atk_base,
+        roll_mod=atk_mod,
         difficulty=defense,
         outcome=outcome,
         state_changes=changes,
@@ -245,11 +249,14 @@ def _resolve_use_item(state: GameState, action: UseItem) -> TurnResult:
 def _resolve_investigate(state: GameState, action: Investigate, dice: Roller) -> TurnResult:
     # Narrative outcome (so questions/looks always read well), but a wits roll is
     # recorded: the GM layer uses it to gate whether a hidden secret is uncovered.
-    roll = dice.d20() + stat_mod(state.player.stat("wits"))
+    base = dice.d20()
+    mod = stat_mod(state.player.stat("wits"))
     return TurnResult(
         action=action,
         valid=True,
-        roll=roll,
+        roll=base + mod,
+        roll_base=base,
+        roll_mod=mod,
         difficulty=DIFFICULTY["medium"],
         outcome="narrative_only",
         scene_events=[SceneEvent(kind="investigated", detail={"target": action.target})],
@@ -267,12 +274,16 @@ def _resolve_custom(state: GameState, action: Custom, dice: Roller) -> TurnResul
         )
     stat = action.stat_hint or "wits"
     difficulty = DIFFICULTY["medium"]
-    roll = dice.d20() + stat_mod(state.player.stat(stat))
+    base = dice.d20()
+    mod = stat_mod(state.player.stat(stat))
+    roll = base + mod
     outcome = "success" if roll >= difficulty else "failure"
     return TurnResult(
         action=action,
         valid=True,
         roll=roll,
+        roll_base=base,
+        roll_mod=mod,
         difficulty=difficulty,
         outcome=outcome,
         scene_events=[

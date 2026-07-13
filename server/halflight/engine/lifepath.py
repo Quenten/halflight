@@ -276,7 +276,7 @@ def _apply(eff: Effect, hp: int, credits: int, stats: dict[str, int]) -> tuple[i
     return hp + eff.dhp, credits + eff.dcredits
 
 
-def _summary(eff: Effect) -> str:
+def summarize_effect(eff: Effect) -> str:
     parts: list[str] = []
     if eff.dhp:
         parts.append(f"{eff.dhp:+d} HP")
@@ -286,7 +286,38 @@ def _summary(eff: Effect) -> str:
     return " · ".join(parts) or "no change"
 
 
-def resolve_build(class_id: str, choices: dict[str, str], dice: Roller) -> Build:
+_summary = summarize_effect  # internal alias
+
+
+def get_step(step_id: str) -> Step | None:
+    return next((s for s in STEPS if s.id == step_id), None)
+
+
+def _outcome_for_kind(opt: Option, kind: str) -> Outcome:
+    by_kind = {o.kind: o for o in opt.outcomes}
+    return by_kind.get(kind) or by_kind.get("neutral") or opt.outcomes[0]
+
+
+def preview_step(step_id: str, option_id: str, dice: Roller) -> Outcome | None:
+    """Roll (or resolve) one lifepath step in isolation, so the creator can show its
+    result the moment the player picks it. Flat steps return a 'chosen' outcome."""
+    step = get_step(step_id)
+    if step is None:
+        return None
+    opt = next((o for o in step.options if o.id == option_id), None)
+    if opt is None:
+        return None
+    if step.rolls and opt.outcomes:
+        return _roll(opt.outcomes, dice)
+    return Outcome("chosen", opt.blurb, opt.base, opt.contact)
+
+
+def resolve_build(
+    class_id: str,
+    choices: dict[str, str],
+    dice: Roller,
+    outcomes: dict[str, str] | None = None,
+) -> Build:
     cls = get_class(class_id)
     if cls is None:
         raise ValueError(f"unknown class {class_id}")
@@ -304,7 +335,11 @@ def resolve_build(class_id: str, choices: dict[str, str], dice: Roller) -> Build
         if opt.start_location:
             start_location = opt.start_location
         if step.rolls and opt.outcomes:
-            outcome = _roll(opt.outcomes, dice)
+            forced = (outcomes or {}).get(step.id)
+            if forced in ("positive", "neutral", "negative"):
+                outcome = _outcome_for_kind(opt, forced)
+            else:
+                outcome = _roll(opt.outcomes, dice)
             hp, credits = _apply(outcome.effect, hp, credits, stats)
             contact = outcome.contact
             backstory.append(

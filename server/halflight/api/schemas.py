@@ -99,6 +99,21 @@ class ChargenRequest(BaseModel):
     character_name: str = "Drifter"
     class_id: str
     choices: dict[str, str] = Field(default_factory=dict)
+    # outcome kind already revealed per rolled step, so the final build matches what the
+    # creator showed. Empty -> the server rolls (back-compat / non-interactive callers).
+    outcomes: dict[str, str] = Field(default_factory=dict)
+
+
+class StepRollRequest(BaseModel):
+    step_id: str
+    option_id: str
+
+
+class StepRollResult(BaseModel):
+    kind: str  # positive | neutral | negative | chosen
+    text: str
+    summary: str
+    contact: str | None = None
 
 
 class BuildStepOut(BaseModel):
@@ -126,6 +141,7 @@ class StateResponse(BaseModel):
     ended: bool
     cause_of_death: str | None
     stats: dict[str, int]
+    stat_base: dict[str, int]  # class baseline, so the sheet can show base vs lifepath
     exits: list[ExitBrief]
     npcs: list[NpcBrief]
     inventory: list[ItemBrief]

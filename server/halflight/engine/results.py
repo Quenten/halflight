@@ -29,6 +29,8 @@ class TurnResult(BaseModel):
     roll: int | None = None
     difficulty: int | None = None
     outcome: Outcome
+    roll_base: int | None = None  # the raw d20, before the stat modifier
+    roll_mod: int | None = None  # the stat modifier applied to this check
     state_changes: list[StateChange] = Field(default_factory=list)
     scene_events: list[SceneEvent] = Field(default_factory=list)
     significance: int = 0  # 0-3; drives whether the event gets embedded

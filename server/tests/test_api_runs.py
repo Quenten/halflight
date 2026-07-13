@@ -113,3 +113,31 @@ def test_create_run_via_chargen(
 def test_chargen_unknown_class_400(client: TestClient) -> None:
     resp = client.post("/runs/chargen", json={"character_name": "X", "class_id": "nope"})
     assert resp.status_code == 400
+
+
+def test_chargen_roll_reveals_outcome(client: TestClient) -> None:
+    resp = client.post("/chargen/roll", json={"step_id": "marked", "option_id": "betrayal"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["kind"] in ("positive", "neutral", "negative")
+    assert body["text"]
+
+
+def test_chargen_roll_unknown_404(client: TestClient) -> None:
+    resp = client.post("/chargen/roll", json={"step_id": "marked", "option_id": "nope"})
+    assert resp.status_code == 404
+
+
+def test_state_carries_stat_base(
+    client: TestClient, session: Session, fake_embedder: FakeEmbedder
+) -> None:
+    run_ingest(FIXTURE, session, fake_embedder)
+    out = client.post("/runs/chargen", json={
+        "character_name": "Vex", "class_id": "enforcer",
+        "choices": {"upbringing": "sump", "marked": "betrayal",
+                    "ran_with": "fixer", "last_job": "protection"},
+    }).json()
+    base = out["state"]["stat_base"]
+    assert base["muscle"] == 14  # enforcer class baseline
+    # final muscle = base + any lifepath delta
+    assert out["state"]["stats"]["muscle"] >= base["muscle"] - 2

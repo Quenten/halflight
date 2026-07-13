@@ -24,6 +24,17 @@ def test_empty_result_has_no_receipt(session: Session) -> None:
     assert build_receipt(session, res, 1) == []
 
 
+def test_roll_breakdown_chip(session: Session) -> None:
+    res = TurnResult(
+        action=Custom(description="pick the lock", stat_hint="tech"),
+        valid=True, outcome="failure",
+        roll=8, roll_base=6, roll_mod=2, difficulty=15,
+    )
+    items = build_receipt(session, res, 1)
+    assert items[0]["text"] == "Roll 6 +2 = 8 vs 15"
+    assert items[0]["tone"] == "bad"  # a failed check reads red
+
+
 def test_combat_receipt(session: Session, fake_embedder: FakeEmbedder) -> None:
     run_ingest(FIXTURE, session, fake_embedder)
     res = TurnResult(
