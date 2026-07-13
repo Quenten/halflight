@@ -17,11 +17,11 @@ TurnResult:
 ```
 
 Narration:
-> You swung the wrench low and caught Dovan under the ribs. He folded against the
-> railing, breath gone, one hand scrabbling for the knife on his belt. Behind you the
-> reclaimer line kept hammering — nobody on the floor so much as turned.
+> You swung the wrench and caught Dovan under the ribs. He doubled over against the
+> railing, winded, and grabbed for the knife on his belt. The machines on the floor
+> kept running, and nobody looked over.
 >
-> Dovan got the knife loose. He wasn't leaving now.
+> Dovan got the knife free. He wasn't going to let this go.
 
 ## Example 2 — failed check
 
@@ -33,11 +33,11 @@ TurnResult:
 ```
 
 Narration:
-> The lock was older than you and meaner. Your pick skated off the third pin twice,
-> then snapped a half-centimeter of tip into the housing. The door didn't care.
+> The lock was old and stubborn. Your pick slipped off the same pin twice, and on the
+> third try the tip snapped off inside it. The door stayed shut.
 >
-> Down the alley, something shifted — a boot on grating, maybe, or just the wind
-> working a loose panel. Hard to say.
+> Somewhere down the alley you heard a scuff — a footstep, or just the wind moving a
+> loose panel. You couldn't tell which.
 
 ## Example 3 — lore question with no retrieval hit
 
@@ -51,6 +51,6 @@ TurnResult:
 ```
 
 Narration:
-> Vesna turned the name over like a coin she suspected was fake. "Provost's daughter."
-> She shook her head once. "You're asking the wrong person. Or it's the wrong name."
-> She went back to her manifest. The conversation had a price, and you hadn't paid it.
+> Vesna repeated the name back, like she wasn't sure it was real. "Provost's daughter."
+> She shook her head. "You've got the wrong person, or the wrong name." Then she went
+> back to her manifest. She wasn't going to give you anything for free.

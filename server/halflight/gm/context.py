@@ -135,7 +135,10 @@ def build_context(
         "## Mechanical outcome (absolute truth; never contradict)\n" + describe_result(result)
     )
     parts.append(
-        "Write the narration now. Second person, past tense, 40-110 words, err short. Respond"
+        "Write the narration now. Second person, past tense, 40-110 words, err short. Use plain,"
+        " clear, readable prose — normal sentences like a modern narrator, not ornate or noir."
+        " Do NOT use similes or metaphors (no 'like a...', no 'still as a stone'), no sentence"
+        " fragments for effect. Just say plainly what happened and what the player sees. Respond"
         " directly to the player's words above. Stay at the current location with only the people"
         " listed as present. Do not ask the player questions."
     )
