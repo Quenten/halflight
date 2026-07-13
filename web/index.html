@@ -87,6 +87,12 @@
   .you { color: var(--amber); } .you::before { content: "> "; color: var(--dim); }
   .narr { color: var(--ink); margin: .3rem 0 1rem; }
   .correction { color: var(--blood); font-style: italic; }
+  .receipt { display: flex; flex-wrap: wrap; gap: .35rem; margin: -.7rem 0 1rem; }
+  .chip { font-size: 12px; padding: .1rem .5rem; border-radius: 3px; border: 1px solid var(--edge);
+    color: var(--dim); background: #0e1113; white-space: nowrap; }
+  .chip.good { color: var(--ok); border-color: rgba(122,158,110,.45); }
+  .chip.bad { color: var(--blood); border-color: rgba(164,69,59,.45); }
+  .chip.neutral { color: var(--cyan); border-color: rgba(111,179,184,.4); }
   .dead { color: var(--blood); font-weight: 700; }
   .death-card { border: 1px solid var(--blood); border-radius: 4px; padding: 1rem 1.2rem;
     margin: 1rem 0; text-align: center; background: rgba(180,40,40,.06); }
@@ -368,7 +374,17 @@ function handleFrame(frame, narr) {
   const p = data ? JSON.parse(data) : {};
   if (event === 'token') { narr.textContent += p.text; scroll(); }
   else if (event === 'correction') el('correction', p.text);
+  else if (event === 'results') renderReceipt(p.items);
   else if (event === 'state') renderState(p);
+}
+
+function renderReceipt(items) {
+  if (!items || !items.length) return;
+  const wrap = el('receipt');
+  wrap.innerHTML = items
+    .map(i => `<span class="chip ${i.tone || 'neutral'}">${esc(i.text)}</span>`)
+    .join('');
+  scroll();
 }
 
 document.getElementById('newBtn').addEventListener('click', openCreator);

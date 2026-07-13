@@ -32,6 +32,7 @@ from halflight.gm.memory import record_event_memory, scene_npc_memories
 from halflight.gm.narrator import check_consistency, factual_fallback, strip_thinking, system_prompt
 from halflight.gm.parser import build_prompt, parse_intent
 from halflight.gm.prompts import parser_prompt
+from halflight.gm.receipt import build_receipt
 from halflight.gm.retrieval import location_lore, retrieve
 from halflight.gm.secrets import maybe_reveal_on_investigate
 from halflight.gm.summary import format_summary, latest_summary, maybe_summarize
@@ -110,6 +111,7 @@ def turn(
     narrate_system = system_prompt(vault)
     parse_prompt_text = build_prompt(parse_system, state, req.text)
     snap = snapshot(session, req.run_id).model_dump()
+    receipt = build_receipt(session, result)
 
     def gen() -> Iterator[str]:
         messages = [
@@ -134,6 +136,8 @@ def turn(
             narration=narration, action=action.model_dump(), result=result.model_dump(),
         )
         _save_narration(req.run_id, turn_no, req.text, narration)
+        if receipt:
+            yield _sse("results", {"items": receipt})
         yield _sse("state", snap)
         yield _sse("done", {})
 
